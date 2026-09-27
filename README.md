@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/banner.svg" alt="Heliograph — Signal between Claude and Instagram" width="100%">
+  <img src="docs/assets/banner.png" alt="Heliograph — Signal between Claude and Instagram" width="100%">
 </p>
 
 <p align="center">
