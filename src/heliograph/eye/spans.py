@@ -29,6 +29,8 @@ P = ParamSpec("P")
 R = TypeVar("R")
 
 _MAX_REPR = 200
+# Message bodies (comment/DM/typed text) are personal content: traces keep only their length.
+_CONTENT_ARGS = frozenset({"text", "comment_text", "message"})
 _MAX_TB = 8000
 ErrorHook = Callable[[ActiveSpan, BaseException], None]
 
@@ -52,7 +54,8 @@ def summarize_args(
 ) -> dict[str, Any]:
     """Return a safe, truncated, redacted summary of a call's arguments.
 
-    ``self``/``cls`` are skipped; values under sensitive parameter names are masked.
+    ``self``/``cls`` are skipped; values under sensitive parameter names are masked, and
+    message bodies (``text``...) are reduced to their length.
     """
     try:
         bound = inspect.signature(func).bind_partial(*args, **kwargs)
@@ -63,7 +66,12 @@ def summarize_args(
     for key, val in items:
         if key in ("self", "cls"):
             continue
-        out[key] = REDACTED if is_sensitive_key(key) else _short(val)
+        if is_sensitive_key(key):
+            out[key] = REDACTED
+        elif key in _CONTENT_ARGS and isinstance(val, str):
+            out[key] = f"<{len(val)} chars>"
+        else:
+            out[key] = _short(val)
     return cast(dict[str, Any], redact(out))
 
 

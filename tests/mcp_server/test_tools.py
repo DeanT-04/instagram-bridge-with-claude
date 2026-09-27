@@ -131,3 +131,12 @@ async def test_runtime_aclose_detaches(harness: Harness) -> None:
     drv = harness.runtime.cdp_driver()
     await harness.runtime.aclose()
     assert isinstance(drv, FakeCdp) and drv.closed and not await harness.runtime.cdp_connected()
+
+
+def test_mark_untrusted_shapes() -> None:
+    from heliograph.mcp.common import UNTRUSTED_NOTE, mark_untrusted
+
+    assert mark_untrusted({"a": 1}) == {"_untrusted": UNTRUSTED_NOTE, "a": 1}
+    assert mark_untrusted("- button") == f"[{UNTRUSTED_NOTE}]\n- button"
+    assert mark_untrusted(["x", 1]) == [f"[{UNTRUSTED_NOTE}]\nx", 1]
+    assert mark_untrusted([1]) == [f"[{UNTRUSTED_NOTE}]", 1]

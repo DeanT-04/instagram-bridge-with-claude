@@ -217,3 +217,12 @@ def test_eye_files_are_owner_only_on_posix(tmp_path: Path) -> None:
             assert stat.S_IMODE((tmp_path / "eye2" / name).stat().st_mode) == 0o600
     assert (tmp_path / "eye2" / "events.jsonl").exists()
     e.close()
+
+
+def test_summarize_args_keeps_only_length_of_message_text() -> None:
+    from heliograph.eye.spans import summarize_args
+
+    def send_dm(text: str, username: str, confirm: bool = False) -> None: ...
+
+    out = summarize_args(send_dm, ("meet me at 5, private", "alice"), {"confirm": True})
+    assert out == {"text": "<21 chars>", "username": "alice", "confirm": True}

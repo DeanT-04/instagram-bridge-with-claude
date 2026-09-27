@@ -45,7 +45,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         await driver.activate(maximize=maximize)
         return {"url": await driver.current_url(), "section": await driver.current_section()}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def app_snapshot(interactive_only: bool = False, visible_only: bool = True,
                            max_nodes: int = 300) -> str:
         """Text outline of what is on screen in the Instagram app (accessibility tree),
@@ -158,7 +158,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
             return _dry_run(f"type {text!r} in the Instagram app", str(exc))
         return {"performed": True, "typed_chars": len(text), "submitted": submit}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def app_visible_posts(visible_only: bool = True) -> dict[str, Any]:
         """Posts/reels currently on screen in the Instagram app: author, shortcode/URL,
         caption, like/comment counts, liked/saved state and the refs of their action

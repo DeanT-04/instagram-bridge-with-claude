@@ -110,6 +110,9 @@ def is_write_control(node: Node, snap: Snapshot | None = None) -> bool:
 # Space also activates a focused button.
 _SUBMIT_KEYS = re.compile(r"\{\s*(enter|return)\b[^}]*\}|[\r\n]", re.IGNORECASE)
 _ACTIVATE_KEYS = re.compile(r"\{\s*space\b[^}]*\}| ", re.IGNORECASE)
+# Tab (or a raw tab character) moves focus, e.g. from a message box to its Send button, so
+# "hi<Tab><Space>" would press a control the focus check never saw.
+_FOCUS_MOVE_KEYS = re.compile(r"\{\s*tab\b[^}]*\}|\t", re.IGNORECASE)
 _COMPOSE_WORDS = re.compile(r"comment|message|reply|caption|chat|write|note|send", re.I)
 _SAFE_FIELDS = re.compile(r"search", re.IGNORECASE)
 
@@ -137,6 +140,8 @@ def unsafe_key_reason(
     activate = submit or bool(_ACTIVATE_KEYS.search(keys or ""))
     if not activate:
         return None
+    if _FOCUS_MOVE_KEYS.search(keys or ""):
+        return "Tab moves focus to another control (e.g. Send) that Space/Enter would press"
     if focused is None:
         return "the focused element is unknown" if submit else None
     role, name = focused

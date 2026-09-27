@@ -67,14 +67,14 @@ def register(server: FastMCP, rt: Runtime) -> None:
         svc = await rt.service()
         return dump_user(await svc.viewer()) or {}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_get_user(username: str) -> dict[str, Any]:
         """Public profile of an account by username (without @): pk, full name,
         verified/private flags and profile URL."""
         user = await (await rt.service()).get_user(username.lstrip("@"))
         return {**(dump_user(user) or {}), "url": user.url}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_user_posts(username: str, limit: int = 12, cursor: str | None = None,
                             caption_chars: int = 300) -> dict[str, Any]:
         """Recent posts/reels of an account, newest first. Returns compact items (code,
@@ -85,7 +85,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         return await media_page(lambda c: svc.user_medias(username.lstrip("@"), c, count),
                                 cursor, limit, caption_chars)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_get_media(ref: str) -> dict[str, Any]:
         """Full details of one post or reel. `ref` may be a post/reel URL
         (https://www.instagram.com/reel/ABC123/), a shortcode (ABC123) or a numeric pk.
@@ -96,7 +96,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
             out["carousel"] = [dump_media(c, caption_chars=0, urls=True) for c in media.children]
         return out
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_comments(ref: str, limit: int = 20, cursor: str | None = None) -> dict[str, Any]:
         """Top-level comments on a post/reel (`ref` = URL, shortcode or pk), with author,
         text, time and like count. Use next_cursor for more."""
@@ -107,7 +107,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
                                           "created_at": c.created_at, "likes": c.like_count},
                          truncated=dropped)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_search(query: str, limit: int = 10) -> dict[str, Any]:
         """Instagram top search: matching users, hashtags and places (up to `limit` of each)."""
         res = await (await rt.service()).search(query)
@@ -116,7 +116,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
                 "hashtags": [dump(h) for h in res.hashtags[:n]],
                 "places": [dump(p) for p in res.places[:n]]}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_timeline(limit: int = 12, cursor: str | None = None,
                           caption_chars: int = 300) -> dict[str, Any]:
         """The user's home feed (posts from accounts they follow; ads/suggestions without
@@ -124,7 +124,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         svc = await rt.service()
         return await media_page(svc.timeline, cursor, limit, caption_chars)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_reels_feed(limit: int = 10, cursor: str | None = None,
                             caption_chars: int = 300) -> dict[str, Any]:
         """The Reels discovery feed (what the Reels tab would show). Paginate with
@@ -132,14 +132,14 @@ def register(server: FastMCP, rt: Runtime) -> None:
         svc = await rt.service()
         return await media_page(svc.reels, cursor, limit, caption_chars)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_explore(limit: int = 20, cursor: str | None = None,
                          caption_chars: int = 200) -> dict[str, Any]:
         """Posts from the Explore grid. Paginate with next_cursor."""
         svc = await rt.service()
         return await media_page(svc.explore, cursor, limit, caption_chars)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_inbox(limit: int = 10, cursor: str | None = None) -> dict[str, Any]:
         """Direct-message threads with participants and the latest message preview.
         Use a thread's id with ig_thread to read it. Private data: only summarise what
@@ -149,7 +149,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         page, dropped = await collect(lambda c: svc.inbox(c, min(n, 20)), cursor, n)
         return dump_page(page, _thread, truncated=dropped)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_thread(
         thread_id: str, limit: int = 20, cursor: str | None = None
     ) -> dict[str, Any]:
@@ -158,7 +158,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         thread = await (await rt.service()).thread(thread_id, cursor, _limit(limit))
         return _thread(thread)
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_activity(limit: int = 20) -> dict[str, Any]:
         """Recent notifications: likes, follows, comments and mentions on the user's
         account (newest first)."""

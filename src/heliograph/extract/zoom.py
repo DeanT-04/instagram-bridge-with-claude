@@ -34,6 +34,15 @@ PRESETS: dict[str, tuple[float, float, float, float]] = {
     "bottom-third": (0, 2 * _T, 1, 1),
 }
 BoxLike = str | Sequence[float]
+_IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
+
+
+def _inside(path: Path, root: Path) -> bool:
+    try:
+        path.resolve().relative_to(root.resolve())
+    except (ValueError, OSError):
+        return False
+    return True
 
 
 @dataclass(frozen=True)
@@ -81,7 +90,9 @@ def frame_path(folder: Path, frame_index: int) -> Path:
     frames = load_index(folder / "frames") or []
     by_index = {f.index: f.path for f in frames}
     if not by_index and (folder / "images").is_dir():
-        images = sorted(p for p in (folder / "images").iterdir() if p.is_file())
+        # only real images inside the dossier (a symlink/junction must not escape it)
+        images = sorted(p for p in (folder / "images").iterdir() if p.is_file()
+                        and p.suffix.lower() in _IMAGE_SUFFIXES and _inside(p, folder))
         by_index = {i: p for i, p in enumerate(images, start=1)}
     if frame_index not in by_index:
         raise ValueError(f"No frame #{frame_index}; available: {sorted(by_index)[:50]}")
@@ -114,6 +125,8 @@ def crop_frame(folder: Path, frame_index: int, box: BoxLike, *, scale: float | N
         region = img.convert("RGB").crop(px).resize(size, Image.Resampling.LANCZOS)
         out_dir = folder / "crops"
         out_dir.mkdir(exist_ok=True)
+        if not _inside(out_dir, folder):  # crops/ swapped for a link to elsewhere
+            raise ValueError(f"{out_dir} resolves outside the dossier folder; refusing to write")
         out = out_dir / (f"frame_{frame_index:03d}_{px[0]}-{px[1]}-{px[2]}-{px[3]}"
                          f"_x{factor:.2g}.png")
         region.save(out, "PNG", optimize=True)

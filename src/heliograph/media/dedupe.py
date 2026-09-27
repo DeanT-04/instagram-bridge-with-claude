@@ -13,7 +13,7 @@ Three rules, applied in time order to the candidate frames (the first is always 
    the last kept frame is a duplicate. Live masking is disabled when most of the frame is
    live (hand-held phone footage), and needs at least ``MIN_PAIRS`` candidate pairs.
 
-Thresholds were measured on six real trading reels: the CTA reel ``REELCODE01`` goes from
+Thresholds were measured on six real trading reels: one CTA reel goes from
 15 tail frames to 4 while annotation changes on small dark charts (thin circles, R:R boxes)
 survive.
 """

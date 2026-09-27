@@ -125,3 +125,43 @@ async def test_view_frames_crop_and_ocr_text(harness: Harness, dossier: Path) ->
     out = json_of(await harness.server.call_tool("ig_read_dossier", {"dossier": CODE}))
     assert out["frames"][1]["text"] == "EMA 9" and "text" not in out["frames"][0]
     assert out["ocr"].endswith("ocr.json")
+
+
+async def test_tampered_frame_index_cannot_escape_dossier(harness: Harness,
+                                                          dossier: Path) -> None:
+    """A frames.json pointing outside frames/ (or at a non-image) is ignored, so neither
+    ig_view_frames nor `dossier frames --open` can read or launch files elsewhere."""
+    secret = dossier.parents[1] / "secret.jpg"
+    PILImage.new("RGB", (8, 8), "blue").save(secret)
+    (dossier / "frames" / "notes.txt").write_text("x", encoding="utf-8")
+    index = json.loads((dossier / "frames" / "frames.json").read_text(encoding="utf-8"))
+    index += [{"index": 4, "time_s": 12.0, "path": "../../../secret.jpg", "phash": "0"},
+              {"index": 5, "time_s": 13.0, "path": str(secret), "phash": "0"},
+              {"index": 6, "time_s": 14.0, "path": "notes.txt", "phash": "0"}]
+    (dossier / "frames" / "frames.json").write_text(json.dumps(index), encoding="utf-8")
+    from heliograph.mcp.dossiers import load_frames
+
+    assert [f["index"] for f in load_frames(dossier)] == [1, 2, 3]
+    with pytest.raises(ToolError, match="No frame"):
+        await harness.server.call_tool("ig_view_frames", {"dossier": CODE, "frames": [4]})
+
+
+async def test_content_tools_mark_results_untrusted(harness: Harness, dossier: Path) -> None:
+    from heliograph.mcp.common import UNTRUSTED_NOTE
+
+    out = json_of(await harness.server.call_tool("ig_read_dossier", {"dossier": CODE}))
+    assert out["_untrusted"] == UNTRUSTED_NOTE
+    blocks = _blocks(await harness.server.call_tool("ig_view_frames", {"dossier": CODE}))
+    assert isinstance(blocks[0], TextContent) and blocks[0].text.startswith(f"[{UNTRUSTED_NOTE}]")
+
+
+def test_crop_refuses_image_fallback_outside_dossier(tmp_path: Path) -> None:
+    from heliograph.extract.zoom import frame_path
+
+    folder = tmp_path / "d"
+    (folder / "images").mkdir(parents=True)
+    PILImage.new("RGB", (8, 8)).save(folder / "images" / "1.jpg")
+    (folder / "images" / "2.txt").write_text("not an image", encoding="utf-8")
+    assert frame_path(folder, 1).name == "1.jpg"
+    with pytest.raises(ValueError, match="No frame #2"):
+        frame_path(folder, 2)

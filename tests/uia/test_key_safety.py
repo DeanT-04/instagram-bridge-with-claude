@@ -106,6 +106,10 @@ def test_key_policy() -> None:
     assert unsafe_key_reason("{Enter}", ("edit", "Search input")) is None
     assert unsafe_key_reason("{Esc}", ("edit", "Add a comment…")) is None
     assert unsafe_key_reason("{Space}", ("button", "More")) is None
+    # Tab then Space/Enter would press whatever gets focus next (e.g. Send)
+    assert unsafe_key_reason("hi\t ", ("edit", "Message"))
+    assert unsafe_key_reason("{Tab}{Space}", ("edit", "Search input"))
+    assert unsafe_key_reason("hi\tthere", ("edit", "Message")) is None
 
 
 async def test_press_enter_in_comment_box_requires_confirm(driver: UiaDriver) -> None:

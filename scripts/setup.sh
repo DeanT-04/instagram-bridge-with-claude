@@ -41,7 +41,7 @@ step "Checking for uv"
 if ! command -v uv >/dev/null 2>&1; then
   warn "uv is not installed."
   echo "      It will be installed with the official Astral installer:"
-  echo "        curl -LsSf https://astral.sh/uv/install.sh | sh"
+  echo "        curl --proto '=https' --tlsv1.2 -LsSf https://astral.sh/uv/install.sh | sh"
   echo "      (installs to ~/.local/bin, no root needed)"
   if [ "$YES" -ne 1 ]; then
     printf "      Install uv now? [Y/n] "
@@ -52,9 +52,9 @@ if ! command -v uv >/dev/null 2>&1; then
     esac
   fi
   if command -v curl >/dev/null 2>&1; then
-    curl -LsSf https://astral.sh/uv/install.sh | sh
+    curl --proto '=https' --tlsv1.2 -LsSf https://astral.sh/uv/install.sh | sh
   elif command -v wget >/dev/null 2>&1; then
-    wget -qO- https://astral.sh/uv/install.sh | sh
+    wget --https-only -qO- https://astral.sh/uv/install.sh | sh
   else
     fail "Neither curl nor wget is available to download uv."; exit 1
   fi
@@ -68,7 +68,7 @@ ok "$(uv --version)"
 
 # --- 2. dependencies -----------------------------------------------------------------------
 step "Installing Python dependencies (uv sync, with on-screen OCR extra)"
-uv sync --extra ocr
+uv sync --locked --extra ocr   # --locked: install exactly what uv.lock pins
 ok "dependencies installed in .venv"
 
 # --- 3. heliograph setup ---------------------------------------------------------------------

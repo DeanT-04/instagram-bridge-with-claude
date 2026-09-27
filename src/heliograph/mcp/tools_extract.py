@@ -9,7 +9,12 @@ from mcp.server.fastmcp import FastMCP, Image
 
 from heliograph import eye
 from heliograph.mcp.common import EXTRACT, LOCAL, clip, tool
-from heliograph.mcp.dossiers import find_dossier, load_frames, summarize_dossier
+from heliograph.mcp.dossiers import (
+    find_dossier,
+    is_dossier_image,
+    load_frames,
+    summarize_dossier,
+)
 from heliograph.mcp.runtime import Runtime
 
 __all__ = ["register"]
@@ -55,7 +60,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         return await abuild_dossier(media, root(), transcript=transcript, frames=frames,
                                     force=force, whisper_model=rt.settings.whisper_model)
 
-    @tool(server, annotations=EXTRACT)
+    @tool(server, annotations=EXTRACT, untrusted=True)
     async def ig_extract_media(ref: str, transcript: bool = True, frames: bool = True,
                                force: bool = False, md_chars: int = 20000) -> dict[str, Any]:
         """Build (or reuse) a dossier for one post/reel: downloads the video or images from
@@ -78,7 +83,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
                    skipped_stages=d.skipped, notes=d.notes, timings_s=d.timings)
         return out
 
-    @tool(server, annotations=EXTRACT)
+    @tool(server, annotations=EXTRACT, untrusted=True)
     async def ig_extract_collection(collection: str, limit: int = 10,
                                     skip_existing: bool = True, transcript: bool = True,
                                     force: bool = False) -> dict[str, Any]:
@@ -118,7 +123,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         return {"collection": collection, "processed": len(results), **counts,
                 "dossier_root": str(root()), "items": results}
 
-    @tool(server, annotations=LOCAL)
+    @tool(server, annotations=LOCAL, untrusted=True)
     async def ig_read_dossier(dossier: str, md_chars: int = 30000,
                               include_transcript: bool = False) -> dict[str, Any]:
         """Read an existing dossier: its dossier.md text (metadata, caption, merged
@@ -131,7 +136,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
             out["transcript_md_text"] = (folder / "transcript.md").read_text(encoding="utf-8")
         return out
 
-    @tool(server, annotations=LOCAL)
+    @tool(server, annotations=LOCAL, untrusted=True)
     async def ig_view_frames(dossier: str, frames: list[int] | None = None,
                              contact_sheet: bool = True, max_images: int = 6,
                              crop: str | None = None, scale: float | None = None,
@@ -177,7 +182,8 @@ def register(server: FastMCP, rt: Runtime) -> None:
                 imgs = sorted((folder / "images").glob("*")) if (folder / "images").is_dir() \
                     else []
                 paths += [(f"image {p.name}", p) for p in imgs[:cap]]
-        paths = [(label, p) for label, p in paths if p.is_file()][:cap]
+        # only real image files inside the dossier (no symlink/junction/tampered-index escape)
+        paths = [(label, p) for label, p in paths if is_dossier_image(p, folder)][:cap]
         if not paths:
             raise ValueError(f"No images found in dossier {folder}")
         content: list[Any] = [f"Dossier {folder.name}: showing " +

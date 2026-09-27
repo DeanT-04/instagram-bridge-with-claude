@@ -79,7 +79,7 @@ def test_redact_text_masks_secrets(text: str, secret: str) -> None:
         "https://www.instagram.com/reel/C8abcDEF123/",
         "sha256 9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
         "media 3412345678901234567_123456789",
-        r"C:\Userslice\.heliograph\eye\artifacts\screenshot.png",
+        r"C:\Users\alice\.heliograph\eye\artifacts\screenshot.png",
         "a normal sentence about tokens and cookies",
     ],
 )

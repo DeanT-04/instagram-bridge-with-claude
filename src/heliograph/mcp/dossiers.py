@@ -10,7 +10,8 @@ from typing import Any
 from heliograph.errors import HeliographError
 from heliograph.instagram.endpoints import shortcode_from_url
 
-__all__ = ["dossier_files", "find_dossier", "load_frames", "summarize_dossier"]
+__all__ = ["dossier_files", "find_dossier", "is_dossier_image", "load_frames",
+           "summarize_dossier"]
 
 _IMAGE_SUFFIXES = {".jpg", ".jpeg", ".png", ".webp", ".gif"}
 _CODE = re.compile(r"[A-Za-z0-9_-]{1,64}")
@@ -22,6 +23,17 @@ def _inside(path: Path, root: Path) -> bool:
     except ValueError:
         return False
     return True
+
+
+def is_dossier_image(path: Path, folder: Path) -> bool:
+    """True if ``path`` is an image file whose real location is inside ``folder``.
+
+    Frame indexes and folders inside a dossier are data: a tampered ``frames.json``, a
+    symlink/junction or a non-image file must never make ig_view_frames / ``dossier frames
+    --open`` read (and hand to Claude) or launch something outside the dossier.
+    """
+    return (path.suffix.lower() in _IMAGE_SUFFIXES and _inside(path, folder)
+            and path.is_file())
 
 
 def find_dossier(ref: str, root: Path) -> Path:
@@ -77,12 +89,17 @@ def load_frames(folder: Path) -> list[dict[str, Any]]:
         return []
     out: list[dict[str, Any]] = []
     texts = _ocr_texts(folder)
+    frames_dir = (folder / "frames").resolve()
+    if not _inside(frames_dir, folder):  # frames/ is a link to somewhere else
+        return []
     for d in items if isinstance(items, list) else []:
         try:
             t = float(d["time_s"])
             path = (folder / "frames" / str(d["path"])).resolve()
-        except (KeyError, TypeError, ValueError):
+        except (KeyError, TypeError, ValueError, OSError):
             continue
+        if path.parent != frames_dir or path.suffix.lower() not in _IMAGE_SUFFIXES:
+            continue  # tampered index: never point outside frames/ or at a non-image
         m, s = divmod(int(max(0.0, t)), 60)
         idx = int(d.get("index", len(out) + 1))
         item = {"index": idx, "time_s": round(t, 2),
@@ -96,8 +113,9 @@ def load_frames(folder: Path) -> list[dict[str, Any]]:
 def dossier_files(folder: Path) -> dict[str, Any]:
     """Which standard files exist in a dossier folder."""
     sheet = folder / "contact_sheet.jpg"
-    images = sorted(p for p in (folder / "images").glob("*") if p.suffix.lower()
-                    in _IMAGE_SUFFIXES) if (folder / "images").is_dir() else []
+    images_dir = folder / "images"
+    images = sorted(p for p in images_dir.glob("*") if is_dossier_image(p, folder)) \
+        if images_dir.is_dir() else []
     return {
         "dossier_dir": str(folder),
         "dossier_md": str(folder / "dossier.md"),

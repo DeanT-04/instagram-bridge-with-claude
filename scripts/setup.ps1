@@ -65,7 +65,7 @@ Write-Ok "uv $((& uv --version) -replace '^uv ', '')"
 
 # --- 2. dependencies -----------------------------------------------------------------------
 Write-Step 'Installing Python dependencies (uv sync, with on-screen OCR extras)'
-& uv sync --extra ocr --extra ocr-windows
+& uv sync --locked --extra ocr --extra ocr-windows  # --locked: exactly what uv.lock pins
 if ($LASTEXITCODE -ne 0) { Write-Fail 'uv sync failed (see above).'; exit $LASTEXITCODE }
 Write-Ok 'dependencies installed in .venv'
 

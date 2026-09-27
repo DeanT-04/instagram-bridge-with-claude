@@ -1,8 +1,9 @@
 """Runtime configuration for Heliograph.
 
-Settings are read from environment variables prefixed ``HELIOGRAPH_`` and from a ``.env``
-file in the current directory. All paths default to locations under ``~/.heliograph`` and
-are never relative to the working directory. Directories are created lazily via
+Settings are read from environment variables prefixed ``HELIOGRAPH_`` and from
+``~/.heliograph/.env`` only (a ``.env`` in the working directory is ignored). All paths
+default to locations under ``~/.heliograph`` and are never relative to the working
+directory. Directories are created lazily via
 :meth:`Settings.ensure_dir` so that importing the config has no side effects.
 """
 

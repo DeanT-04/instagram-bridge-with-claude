@@ -25,7 +25,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         return {"count": len(cols),
                 "collections": [c.model_dump(exclude_none=True) for c in cols]}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_collection_posts(collection: str, limit: int = 24, cursor: str | None = None,
                                   caption_chars: int = 300) -> dict[str, Any]:
         """Posts/reels in one saved collection. `collection` is its numeric id or its name
@@ -38,7 +38,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
                         truncated=dropped)
         return {"collection_id": cid, **out}
 
-    @tool(server, annotations=READ_ONLY)
+    @tool(server, annotations=READ_ONLY, untrusted=True)
     async def ig_saved_posts(limit: int = 24, cursor: str | None = None,
                              caption_chars: int = 300) -> dict[str, Any]:
         """All saved posts (the "All posts" view, every collection combined), newest saved
