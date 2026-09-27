@@ -1,0 +1,78 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  UV_PYTHON: "3.12"
+
+jobs:
+  lint:
+    name: Lint & types (windows)
+    # mypy runs on Windows only for now: drivers/uia/screenshot.py uses ctypes.windll,
+    # which mypy flags on other platforms. Move this to the matrix once that is guarded.
+    runs-on: windows-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+      - name: Ruff
+        run: uv run ruff check .
+      - name: Mypy (strict)
+        run: uv run mypy
+
+  test:
+    name: Tests (${{ matrix.os }})
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install ffmpeg (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
+      - name: Install ffmpeg (macOS)
+        if: runner.os == 'macOS'
+        run: brew install ffmpeg
+      - name: Install ffmpeg (Windows)
+        if: runner.os == 'Windows'
+        run: choco install ffmpeg -y --no-progress
+
+      - uses: astral-sh/setup-uv@v6
+        with:
+          python-version: "3.12"
+          enable-cache: true
+
+      # ocr-windows (winrt-*), uiautomation and pywin32 carry `sys_platform == 'win32'`
+      # markers, so --all-extras is safe on Linux/macOS.
+      - name: Install dependencies
+        run: uv sync --all-extras --locked
+
+      - name: CLI smoke test
+        run: |
+          uv run heliograph --help
+          uv run heliograph version
+
+      # live = touches a real device/account; slow = downloads Whisper models.
+      - name: Pytest
+        run: uv run pytest -m "not live and not slow" -q
