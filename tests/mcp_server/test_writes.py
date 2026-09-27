@@ -95,3 +95,35 @@ async def test_app_type_submit_requires_confirm(harness: Harness) -> None:
     assert out["dry_run"] is True and harness.uia.calls == []
     out = json_of(await harness.server.call_tool("app_type", {"text": "cats"}))
     assert out["performed"] is True and harness.uia.calls == [("type", "cats")]
+
+
+async def test_app_type_newline_counts_as_submit(harness: Harness) -> None:
+    harness.uia = FakeUia()
+    out = json_of(await harness.server.call_tool("app_type", {"text": "nice post\n"}))
+    assert out["dry_run"] is True and harness.uia.calls == []
+
+
+class _RefusingUia(FakeUia):
+    async def type_text(self, text: str, ref: str | None = None, **kw: Any) -> None:
+        from heliograph.errors import UnsafeActionError
+
+        assert kw.get("confirm") is False
+        raise UnsafeActionError("the focused control 'Like' changes the account")
+
+
+async def test_app_type_driver_refusal_becomes_dry_run(harness: Harness) -> None:
+    harness.uia = _RefusingUia()
+    out = json_of(await harness.server.call_tool("app_type", {"text": "a b"}))
+    assert out["dry_run"] is True and "Like" in out["reason"]
+
+
+async def test_app_click_checks_parent_write_control(harness: Harness) -> None:
+    """An unnamed icon inside the Like button is a write control via the snapshot."""
+    harness.uia = FakeUia()
+    like = _node("e1", "button", "Like")
+    icon = Node(ref="e2", role="image", name="", value="", rect=(0, 0, 5, 5), depth=1,
+                parent="e1", visible=True, interactive=False)
+    harness.uia.last_snapshot = Snapshot(url="https://www.instagram.com/", title="Instagram",
+                                         nodes=[like, icon])
+    out = json_of(await harness.server.call_tool("app_click", {"ref": "e2"}))
+    assert out["dry_run"] is True and harness.uia.calls == []

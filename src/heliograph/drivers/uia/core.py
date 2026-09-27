@@ -71,7 +71,8 @@ class UiaCore:
     def _on_error(self, active: Any, exc: BaseException) -> None:
         if self._hwnd is None:
             return
-        folder = get_settings().eye_path / "artifacts"
+        settings = get_settings()
+        folder = settings.ensure_dir(settings.eye_path / "artifacts")  # owner-only
         stem = f"uia-{active.name.split('.')[-1]}-{time.strftime('%Y%m%d-%H%M%S')}"
         try:
             path, _ = capture_window(self._hwnd, folder / f"{stem}.png")
@@ -179,6 +180,10 @@ class UiaCore:
                     "the Instagram app shows the login page",
                     hint="Log in inside the Instagram app window.",
                 )
+            # the URL is known long before the page renders (a freshly launched window's
+            # document has ~5 nodes): wait for real content so readers don't see nothing
+            snap = await self.wait_settled(timeout=min(self.ready_timeout, 15.0))
+            s.set(nodes=len(snap) if snap is not None else 0)
 
     async def current_url(self) -> str | None:
         """URL of the page (from the web document's ValuePattern)."""
@@ -258,6 +263,11 @@ class UiaCore:
         self._doc = self._snap = None
 
     # ------------------------------------------------------------------ extras
+    @property
+    def last_snapshot(self) -> Snapshot | None:
+        """The most recent snapshot: the one the ``eN`` refs of click/like/... refer to."""
+        return self._snap
+
     async def take_snapshot(self) -> Snapshot:
         """Fresh :class:`Snapshot`; its refs are valid until the next snapshot."""
         async with self._span("snapshot") as s:

@@ -2,6 +2,9 @@
 
 * :func:`click` — ``InvokePattern`` first (works without focus or a visible cursor), then
   falls back to scrolling the element into view and clicking its bounding-rect centre.
+  The centre-click fallback is refused for container-sized elements (both sides above
+  :data:`MAX_MOUSE_TARGET`): the centre of a feed/article is some arbitrary child, e.g.
+  a Like button, unless ``allow_large=True``.
 * :func:`type_text` / :func:`press_keys` — focus then ``SendKeys`` (real keystrokes, so
   React inputs see proper input events; ``ValuePattern.SetValue`` would not).
 * :func:`scroll_element` — ``ScrollPattern`` (no focus needed); :func:`scroll_keys` —
@@ -14,13 +17,16 @@ import time
 from typing import Any, Literal
 
 from heliograph.drivers.uia.runtime import load_uiautomation
-from heliograph.errors import ElementNotFoundError
+from heliograph.errors import ElementNotFoundError, UnsafeActionError
 
 __all__ = [
+    "MAX_MOUSE_TARGET",
     "ClickMethod",
+    "check_mouse_target",
     "click",
     "escape_keys",
     "focus",
+    "focused_element",
     "press_keys",
     "scroll_element",
     "scroll_keys",
@@ -28,6 +34,8 @@ __all__ = [
 ]
 
 ClickMethod = Literal["invoke", "mouse"]
+MAX_MOUSE_TARGET = (400, 200)
+"""``(width, height)`` in px: larger elements are containers, never centre-clicked."""
 
 
 def _control(element: Any) -> Any:
@@ -46,7 +54,18 @@ def escape_keys(text: str) -> str:
     return "".join("{{}" if ch == "{" else "{}}" if ch == "}" else ch for ch in text)
 
 
-def _mouse_click(control: Any) -> None:
+def check_mouse_target(width: int, height: int, name: str, *, allow_large: bool) -> None:
+    """Refuse a centre click on a container-sized element (see module docstring)."""
+    max_w, max_h = MAX_MOUSE_TARGET
+    if not allow_large and width > max_w and height > max_h:
+        raise UnsafeActionError(
+            f"refusing to mouse-click the centre of {name!r} ({width}x{height}px): it is a "
+            "container, the click would land on an arbitrary child",
+            hint="Click a specific child element (take a snapshot), or pass allow_large=True.",
+        )
+
+
+def _mouse_click(control: Any, *, allow_large: bool = False) -> None:
     auto = load_uiautomation()
     try:
         control.GetScrollItemPattern().ScrollIntoView()
@@ -56,10 +75,13 @@ def _mouse_click(control: Any) -> None:
     rect = control.BoundingRectangle
     if rect.width() <= 0 or rect.height() <= 0:
         raise ElementNotFoundError(f"element {control.Name!r} has no on-screen area to click")
+    check_mouse_target(rect.width(), rect.height(), control.Name, allow_large=allow_large)
     auto.Click(rect.xcenter(), rect.ycenter(), waitTime=0.1)
 
 
-def click(element: Any, *, prefer: ClickMethod = "invoke") -> ClickMethod:
+def click(
+    element: Any, *, prefer: ClickMethod = "invoke", allow_large: bool = False
+) -> ClickMethod:
     """Activate ``element``; returns the method that worked (``"invoke"`` or ``"mouse"``)."""
     control = _control(element)
     if prefer == "invoke":
@@ -70,7 +92,7 @@ def click(element: Any, *, prefer: ClickMethod = "invoke") -> ClickMethod:
                 return "invoke"
         except Exception:
             pass  # not invokable -> physical click
-    _mouse_click(control)
+    _mouse_click(control, allow_large=allow_large)
     return "mouse"
 
 
@@ -81,6 +103,19 @@ def focus(element: Any) -> None:
         control.SetFocus()
     except Exception:
         _mouse_click(control)
+
+
+def focused_element() -> tuple[str, str] | None:
+    """``(role, name)`` of the element with keyboard focus, or None if unknown."""
+    auto = load_uiautomation()
+    try:
+        control = auto.GetFocusedControl()
+        if control is None:
+            return None
+        role = str(control.ControlTypeName).removesuffix("Control").lower()
+        return role, str(control.Name or "")
+    except Exception:
+        return None
 
 
 def type_text(text: str, element: Any | None = None, *, clear: bool = False) -> None:

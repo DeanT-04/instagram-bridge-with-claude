@@ -9,6 +9,14 @@ Post detection (live-verified structures, Instagram web in the Store app, Sept 2
 * **Reels** — no articles; each reel is a ``Video player`` group (author link
   ``"<user> reels"``, Follow button, caption as a leaf button) followed by its action
   column ``Like`` [count] ``Comment N`` ``Repost`` ``Share`` ``Save`` ``More``.
+* **Grids** (profile posts/reels tabs, saved, explore, "more posts" under a post) — no
+  articles or action rows; each tile is a hyperlink to ``/<owner>/p/<code>/`` or
+  ``/<owner>/reel/<code>/`` (owner prefix on profile grids) named ``"<alt text> Clip"`` /
+  ``"... Carousel"`` (or unnamed). These come back with ``kind="grid"`` and null counts.
+
+Lazy loading: right after launch/navigation the document can be nearly empty (a handful of
+nodes) or show ``statusbar "Loading..."`` placeholders; :func:`is_loading` detects that so
+the driver can wait instead of reporting zero posts.
 
 Toggled states: ``Unlike`` = already liked, ``Remove`` = already saved.
 """
@@ -19,30 +27,25 @@ import re
 from typing import Any
 from urllib.parse import urlparse
 
+from heliograph.drivers.uia.grid import grid_posts
 from heliograph.drivers.uia.tree import Node, Snapshot
+from heliograph.drivers.uia.urls import IG_URL, permalink_of, username_from_url
 
-__all__ = ["current_section", "parse_count", "unread_badges", "username_from_url", "visible_posts"]
+__all__ = [
+    "POST_SECTIONS",
+    "current_section",
+    "is_loading",
+    "parse_count",
+    "permalink_of",
+    "unread_badges",
+    "username_from_url",
+    "visible_posts",
+]
 
-_IG = re.compile(r"^https://(?:www\.)?instagram\.com/")
-_RESERVED = {
-    "explore",
-    "reels",
-    "reel",
-    "direct",
-    "accounts",
-    "p",
-    "stories",
-    "tv",
-    "about",
-    "legal",
-    "developer",
-    "web",
-    "emails",
-    "challenge",
-    "_n",
-    "_u",
-}
-_PERMALINK = re.compile(r"instagram\.com/(p|reel|reels|tv)/([A-Za-z0-9_-]+)/?")
+POST_SECTIONS = frozenset(
+    {"home", "reels", "reel", "profile", "own_profile", "saved", "post", "explore"}
+)
+"""Sections that normally show posts (worth waiting for when none are found yet)."""
 _COMMENT = re.compile(r"Comment( [\d,.]+[KkMm]?)?")
 _COUNT = re.compile(r"^(\d[\d,.]*)\s*([KkMm])?$")
 _NOT_CAPTION = {
@@ -93,16 +96,15 @@ def parse_count(text: str) -> int | None:
         return None
 
 
-def username_from_url(url: str | None) -> str | None:
-    """``https://www.instagram.com/alice/`` or ``.../alice/reels/`` -> ``"alice"``."""
-    if not url or not _IG.match(url):
-        return None
-    parts = [p for p in urlparse(url).path.split("/") if p]
-    if not parts or parts[0] in _RESERVED or not re.fullmatch(r"[A-Za-z0-9._]+", parts[0]):
-        return None
-    if len(parts) > 1 and parts[1] not in ("reels", "tagged", "saved", "followers", "following"):
-        return None
-    return parts[0]
+def is_loading(snap: Snapshot) -> bool:
+    """True while the page is still (lazily) rendering: an almost empty document or
+    ``Loading...`` status/progress placeholders."""
+    if len(snap.nodes) <= 15:
+        return True
+    return any(
+        n.role in ("statusbar", "progressbar") and n.name.casefold().startswith("loading")
+        for n in snap.nodes
+    )
 
 
 def _segments(snap: Snapshot) -> list[list[Node]]:
@@ -116,7 +118,11 @@ def _segments(snap: Snapshot) -> list[list[Node]]:
     for i, start in enumerate(starts):
         begin = snap.index_of(start.ref)
         end = snap.index_of(starts[i + 1].ref) if i + 1 < len(starts) else len(snap.nodes)
-        out.append(snap.nodes[begin:end])
+        seg = snap.nodes[begin:end]
+        # stop at the reel container's end (the last reel must not swallow the page's
+        # trailing "Navigate to previous reel" / Messages buttons)
+        cut = next((j for j, node in enumerate(seg) if node.depth < start.depth), len(seg))
+        out.append(seg[:cut])
     return out
 
 
@@ -163,10 +169,9 @@ def _parse_post(seg: list[Node]) -> dict[str, Any]:
         user = username_from_url(node.value)
         if author is None and user and node.name.startswith(user):
             author, refs["author"] = user, node.ref
-        match = _PERMALINK.search(node.value)
-        if permalink is None and match and "/audio/" not in node.value:
-            permalink = f"https://www.instagram.com/{match.group(1)}/{match.group(2)}/"
-            refs["permalink"] = node.ref
+        found = permalink_of(node.value)
+        if permalink is None and found:
+            permalink, refs["permalink"] = found[0], node.ref
     like = next((n for n in seg if n.role == "button" and n.name in _LIKE), None)
     save = next((n for n in seg if n.role == "button" and n.name in _SAVE), None)
     comment = next((n for n in seg if n.role == "button" and _COMMENT.fullmatch(n.name)), None)
@@ -180,6 +185,7 @@ def _parse_post(seg: list[Node]) -> dict[str, Any]:
         comment_count = parse_count(tail) if tail else _next_count(seg, comment.ref)
     alt = next((n.name for n in seg if n.role == "image" and n.name.startswith("Photo")), None)
     return {
+        "kind": "feed" if seg[0].role == "article" else "reel",
         "author": author,
         "caption": _caption(seg, author),
         "permalink": permalink,
@@ -190,7 +196,10 @@ def _parse_post(seg: list[Node]) -> dict[str, Any]:
         "has_video": any(n.name in ("Video player", "Press to play", "Adjust volume") for n in seg),
         "is_ad": any(n.role == "text" and n.name in ("Ad", "Sponsored") for n in seg),
         "media_alt": alt,
-        "visible": any(n.visible for n in seg if n.role in ("button", "hyperlink")),
+        # the article/player itself counts: a tall photo can fill the screen while the
+        # header and action row are both scrolled out of view
+        "visible": seg[0].visible
+        or any(n.visible for n in seg if n.role in ("button", "hyperlink")),
         "refs": refs,
     }
 
@@ -198,24 +207,28 @@ def _parse_post(seg: list[Node]) -> dict[str, Any]:
 def visible_posts(snap: Snapshot, *, visible_only: bool = True) -> list[dict[str, Any]]:
     """Posts/reels in the snapshot as dicts (see module docstring for the fields).
 
+    ``kind`` is ``feed`` (article), ``reel`` (Reels viewer) or ``grid`` (profile/saved/
+    explore tile: only author, caption/alt, permalink and ``refs.permalink``).
     ``refs`` maps ``like``/``comment``/``save``/``more``/``author``/``permalink`` to
     snapshot refs usable with the driver's click/write methods. ``visible`` means some control
     of the post is on screen. When exactly one post's Like button is on screen on a
     ``/reels/<code>/`` page, that post's permalink is taken from the URL.
     """
-    posts = [_parse_post(seg) for seg in _segments(snap)]
+    segments = _segments(snap)
+    posts = [_parse_post(seg) for seg in segments]
     posts = [p for p in posts if p["refs"].get("like") or p["author"]]
+    posts += grid_posts(snap, {n.ref for seg in segments for n in seg})
     if visible_only:
         posts = [p for p in posts if p["visible"]]
-    match = _PERMALINK.search(snap.url or "")
+    here = permalink_of(snap.url)
 
     def like_visible(post: dict[str, Any]) -> bool:
         node = snap.get(post["refs"].get("like", ""))
         return bool(node and node.visible)
 
     focused = [p for p in posts if like_visible(p)]
-    if match and len(focused) == 1 and focused[0]["permalink"] is None:
-        focused[0]["permalink"] = f"https://www.instagram.com/{match.group(1)}/{match.group(2)}/"
+    if here and len(focused) == 1 and focused[0]["permalink"] is None:
+        focused[0]["permalink"] = here[0]
     return posts
 
 
@@ -248,7 +261,7 @@ def current_section(snap: Snapshot, own_username: str | None = None) -> str:
     if snap.find("Search input", role="edit"):
         return "search"
     url = snap.url or ""
-    if not _IG.match(url):
+    if not IG_URL.match(url):
         return "unknown"
     parts = [p for p in urlparse(url).path.split("/") if p]
     if not parts:

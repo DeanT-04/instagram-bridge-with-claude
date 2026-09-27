@@ -48,30 +48,39 @@ def _run_powershell(command: str, timeout: float = 30) -> subprocess.CompletedPr
     )
 
 
+def _app_windows() -> list[Any]:
+    """Store-app windows via the UIA driver's AUMID matcher (on a COM-initialised thread)."""
+    from heliograph.drivers.uia import app
+    from heliograph.drivers.uia.runtime import UiaWorker
+
+    worker = UiaWorker()
+    try:
+        return list(worker.call(app.find_app_windows))
+    finally:
+        worker.shutdown()
+
+
 def find_instagram_window() -> tuple[bool | None, str | None, str | None]:
-    """Look for an open Instagram app window via UI Automation.
+    """Look for an open window of the Store Instagram app.
 
     Returns ``(open, title, reason)``; ``open`` is None when the check is impossible.
-    Matches top-level ``Chrome_WidgetWin_1`` windows whose title contains "Instagram"
-    (note: an Edge/Chrome tab titled Instagram in its own window also matches).
+    Reuses :func:`heliograph.drivers.uia.app.find_app_windows`, which matches top-level
+    windows by the app's AppUserModelID, so an Edge/Chrome tab (or Heliograph's own CDP
+    window) titled "Instagram" is not mistaken for the app.
     """
     if sys.platform != "win32":
         return None, None, "not Windows"
     with span("detect.instagram_window") as s:
         try:
-            import uiautomation as auto
+            windows = _app_windows()
+        except ImportError as exc:
+            s.set(reason="pywin32/uiautomation not importable")
+            return None, None, f"window check unavailable: {exc}"
         except Exception as exc:
-            s.set(reason="uiautomation not importable")
-            return None, None, f"uiautomation not importable: {exc}"
-        try:
-            for win in auto.GetRootControl().GetChildren():
-                title = win.Name or ""
-                if win.ClassName == "Chrome_WidgetWin_1" and "Instagram" in title:
-                    s.set(found=True)
-                    return True, title, None
-        except Exception as exc:
-            return None, None, f"UI Automation error: {exc}"
-        s.set(found=False)
+            return None, None, f"window check failed: {exc}"
+        s.set(found=bool(windows), count=len(windows))
+        if windows:
+            return True, str(windows[0].title), None
         return False, None, None
 
 

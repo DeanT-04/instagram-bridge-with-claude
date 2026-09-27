@@ -112,6 +112,32 @@ async def test_live_visible_posts_and_scroll(driver) -> None:  # type: ignore[no
     assert set(badges) == {"messages", "notifications"}
 
 
+async def test_live_posts_in_every_layout(driver) -> None:  # type: ignore[no-untyped-def]
+    """Reels viewer, profile grid and home feed all yield on-screen posts right after
+    navigation (the lazily rendered page is waited for, no manual settle)."""
+    for section, kind in (("reels", "reel"), ("profile", "grid"), ("home", "feed")):
+        await driver.navigate_section(section)
+        t0 = time.perf_counter()
+        posts = await driver.visible_posts()
+        _timed(f"visible_posts[{section}] ({len(posts)})", t0)
+        assert posts, section
+        assert posts[0]["kind"] == kind, posts[0]
+        assert posts[0]["permalink"] or kind == "reel"  # off-URL reels have no permalink
+        assert all(p["visible"] for p in posts)
+
+
+async def test_live_enter_in_focus_is_guarded(driver) -> None:  # type: ignore[no-untyped-def]
+    """Focus check works against the real app: with the (read-only) search box focused
+    Enter is allowed by the policy; nothing is sent here."""
+    from heliograph.drivers.uia import actions
+    from heliograph.drivers.uia.writes import unsafe_key_reason
+
+    await driver.require_foreground()
+    focused = await driver._worker.run(actions.focused_element)
+    assert focused is None or isinstance(focused[0], str)
+    assert unsafe_key_reason("{Enter}", ("edit", "Search input")) is None
+
+
 async def test_live_failure_attaches_screenshot(driver, recorded) -> None:  # type: ignore[no-untyped-def]
     from heliograph.errors import ElementNotFoundError
 

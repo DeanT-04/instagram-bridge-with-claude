@@ -10,7 +10,7 @@ from heliograph.drivers.base import InstagramDriver
 from heliograph.drivers.uia import UiaDriver
 from heliograph.drivers.uia.actions import escape_keys
 from heliograph.drivers.uia.core import _same_place
-from heliograph.drivers.uia.writes import WriteActions, is_write_control
+from heliograph.drivers.uia.writes import is_write_control
 from heliograph.errors import ElementNotFoundError, RateLimitedError, UnsafeActionError
 from tests.uia.fakes import IG, home_tree, snap
 
@@ -30,7 +30,6 @@ def driver() -> UiaDriver:
     d = UiaDriver()
     d._worker = _NoWorker()  # type: ignore[assignment]
     d._snap = snap(home_tree())
-    WriteActions._last_write = 0.0
     return d
 
 
@@ -65,9 +64,7 @@ async def test_like_already_liked_is_noop(driver: UiaDriver) -> None:
 
 
 async def test_writes_are_rate_limited(driver: UiaDriver) -> None:
-    import time
-
-    WriteActions._last_write = time.monotonic()
+    driver.write_limiter.try_acquire("another process")  # shared ratelimit.json slot
     with pytest.raises(RateLimitedError) as err:
         await driver.save(_ref(driver, "Save"), confirm=True)
     assert err.value.retry_after and err.value.retry_after > 0

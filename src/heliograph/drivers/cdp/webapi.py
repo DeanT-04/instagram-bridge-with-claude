@@ -13,7 +13,11 @@ from typing import Any, Literal, Protocol
 from urllib.parse import unquote, urlencode
 
 from heliograph.drivers.cdp.ratelimit import RateLimiter, limiter_for
-from heliograph.errors import HeliographError, NotLoggedInError, RateLimitedError
+from heliograph.errors import (  # InstagramApiError: re-exported (moved to errors.py)
+    InstagramApiError,
+    NotLoggedInError,
+    RateLimitedError,
+)
 from heliograph.eye import span
 
 __all__ = ["IG_APP_ID", "Evaluator", "InstagramApiError", "WebApiClient", "build_url"]
@@ -49,21 +53,6 @@ class Evaluator(Protocol):
     """Anything with Playwright's ``Page.evaluate`` signature."""
 
     async def evaluate(self, expression: str, arg: Any = None) -> Any: ...
-
-
-class InstagramApiError(HeliographError):
-    """Instagram answered with an unexpected status or a non-JSON body.
-
-    Attributes:
-        status: HTTP status code (0 if unknown).
-        path: API path requested.
-    """
-
-    def __init__(self, message: str, *, status: int = 0, path: str = "",
-                 hint: str | None = None) -> None:
-        super().__init__(message, hint=hint)
-        self.status = status
-        self.path = path
 
 
 def _check_path(path: str) -> None:

@@ -10,8 +10,9 @@ from typing import Literal
 
 from heliograph.config import Settings, get_settings
 from heliograph.eye import event
+from heliograph.writelimit import SharedWriteLimiter
 
-__all__ = ["RateLimiter", "limiter_for"]
+__all__ = ["RateLimiter", "SharedRateLimiter", "limiter_for"]
 
 Kind = Literal["read", "write"]
 
@@ -58,19 +59,37 @@ class RateLimiter:
             return waited
 
 
+class SharedRateLimiter(RateLimiter):
+    """Write limiter backed by :class:`~heliograph.writelimit.SharedWriteLimiter`, so CDP
+    writes are spaced against every Heliograph process (and UIA writes), not just this one."""
+
+    def __init__(self, shared: SharedWriteLimiter, *, name: str = "write") -> None:
+        super().__init__(0.0, 0.0, name=name)
+        self.shared = shared
+
+    async def acquire(self) -> float:
+        """Reserve the next shared write slot and wait for it."""
+        async with self._lock:
+            return await self.shared.acquire()
+
+
 _REGISTRY: dict[tuple[str, Kind], RateLimiter] = {}
 
 
 def limiter_for(
     kind: Kind, account: str = "default", settings: Settings | None = None
 ) -> RateLimiter:
-    """Return the process-wide limiter for ``(account, kind)``, created from settings."""
+    """Return the process-wide limiter for ``(account, kind)``, created from settings.
+
+    Writes use the cross-process :class:`SharedRateLimiter` (``~/.heliograph/ratelimit.json``).
+    """
     key = (account, kind)
     if key not in _REGISTRY:
         s = settings or get_settings()
         if kind == "read":
             _REGISTRY[key] = RateLimiter(s.read_min_interval, s.read_jitter, name=f"{account}.read")
         else:
-            _REGISTRY[key] = RateLimiter(s.write_min_interval, s.write_jitter,
-                                         name=f"{account}.write")
+            # interval/jitter are read from settings at each acquire (shared state file)
+            _REGISTRY[key] = SharedRateLimiter(SharedWriteLimiter(name=f"{account}.write"),
+                                               name=f"{account}.write")
     return _REGISTRY[key]

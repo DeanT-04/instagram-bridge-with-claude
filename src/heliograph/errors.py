@@ -14,6 +14,7 @@ __all__ = [
     "DriverUnavailableError",
     "ElementNotFoundError",
     "HeliographError",
+    "InstagramApiError",
     "NotLoggedInError",
     "RateLimitedError",
     "UnsafeActionError",
@@ -88,3 +89,18 @@ class DownloadBlockedError(HeliographError):
 
 class ElementNotFoundError(HeliographError):
     """A UI element or DOM node could not be located."""
+
+
+class InstagramApiError(HeliographError):
+    """Instagram answered with an unexpected status or a non-JSON body.
+
+    Attributes:
+        status: HTTP status code (0 if unknown).
+        path: API path requested.
+    """
+
+    def __init__(self, message: str, *, status: int = 0, path: str = "",
+                 hint: str | None = None) -> None:
+        super().__init__(message, hint=hint)
+        self.status = status
+        self.path = path

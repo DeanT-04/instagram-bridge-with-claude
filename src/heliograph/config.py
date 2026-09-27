@@ -77,6 +77,9 @@ class Settings(BaseSettings):
 
     eye_max_bytes: int = Field(default=10 * 1024 * 1024, gt=0, description="JSONL rotation size")
     eye_backups: int = Field(default=5, ge=0)
+    artifact_retention_days: float = Field(
+        default=7, ge=0, description="Eye failure artifacts older than this are pruned (0 = keep)"
+    )
 
     log_level: LogLevel = "INFO"
 

@@ -184,3 +184,21 @@ def test_detect_tool_ignores_current_directory_on_windows(
     monkeypatch.setattr(tools_mod.shutil, "which", fake_which)
     assert tools_mod._which("ffmpeg") == str(bin_dir / "ffmpeg")
     assert looked == [str(bin_dir / "ffmpeg")]  # "." and relative entries skipped
+
+
+def test_find_window_uses_aumid_matcher(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Edge tabs titled "Instagram" are not app windows: only AUMID matches count."""
+    from types import SimpleNamespace
+
+    monkeypatch.setattr(sys, "platform", "win32")
+    monkeypatch.setattr(ig, "_app_windows", lambda: [])
+    assert ig.find_instagram_window() == (False, None, None)
+    monkeypatch.setattr(ig, "_app_windows", lambda: [SimpleNamespace(title="(1) Instagram")])
+    assert ig.find_instagram_window() == (True, "(1) Instagram", None)
+
+    def boom() -> list[object]:
+        raise ImportError("no pywin32")
+
+    monkeypatch.setattr(ig, "_app_windows", boom)
+    opened, title, reason = ig.find_instagram_window()
+    assert opened is None and title is None and reason and "unavailable" in reason

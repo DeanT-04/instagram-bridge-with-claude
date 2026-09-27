@@ -64,7 +64,8 @@ Local-first; no external service required.
 - Every MCP tool call, driver action, HTTP request, subprocess (ffmpeg/whisper) is a span with a
   `trace_id` so one Claude request can be followed end to end.
 - Automatic failure artifacts: on error in a UI/CDP span, a screenshot + accessibility/DOM snapshot
-  is saved and linked from the event.
+  is saved (owner-only `eye/artifacts/`) and linked from the event; artifacts older than
+  `artifact_retention_days` (default 7) are pruned when the eye starts.
 - Redaction: cookies, `sessionid`, `csrftoken`, auth headers, and anything matching token patterns
   are scrubbed before writing.
 - `heliograph eye` — live tail with colours + rolling health (error rate, p95 latency, top failing ops).
@@ -75,7 +76,12 @@ Local-first; no external service required.
 ## Safety rules (enforced in code)
 
 - Write actions (like, follow, comment, DM, post, unsave) require `confirm=True` at the MCP layer
-  and are rate-limited with jitter; reads are rate-limited too.
+  and are rate-limited with jitter; reads are rate-limited too. The write limit is shared by
+  every Heliograph process and both drivers (`~/.heliograph/ratelimit.json` under a lock file,
+  `heliograph.writelimit`).
+- Live app: Enter (any modifiers) or a newline sent to a comment/message box, and Enter/Space on a
+  focused write control, need `confirm=True` (driver `press`/`type_text` and MCP `app_type`);
+  the mouse centre-click fallback refuses container-sized elements (>400x200 px).
 - Downloads only from allow-listed Instagram CDN hosts over HTTPS.
 - DevTools port bound to 127.0.0.1, random free port, recorded in `~/.heliograph/state.json`.
 - No credentials are ever typed, stored or logged by Heliograph.

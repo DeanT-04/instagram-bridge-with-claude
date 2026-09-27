@@ -129,16 +129,18 @@ def reel(author: str, caption: str, likes: str, comments: int, *, off: bool = Fa
         ),
         name="Video player",
     )
+    if off:
+        offscreen(player)
     return [
         player,
         btn("Like", n("image", "Like"), off=off),
         btn(likes, off=off),
         btn(f"Comment {comments}", text(str(comments)), off=off),
-        btn("Repost"),
-        btn("Share"),
-        btn("Save"),
-        btn("More"),
-        link("Audio image", f"{IG}reels/audio/123/"),
+        btn("Repost", off=off),
+        btn("Share", off=off),
+        btn("Save", off=off),
+        btn("More", off=off),
+        link("Audio image", f"{IG}reels/audio/123/", off=off),
     ]
 
 
@@ -154,6 +156,59 @@ def reels_tree() -> RawNode:
     )
     return n(
         "document", "Instagram", group(*nav_rail()), main, value=IG + "reels/DSynth01/", rect=VIEW
+    )
+
+
+def reels_tree_with_trailing_controls() -> RawNode:
+    """Live shape: reels inside one container, page-level buttons after it."""
+    main = n(
+        "main",
+        "",
+        group(
+            *reel("creator.one", "A synthetic comedy clip", "2,869", 12),
+            *reel("_creator_two", "a synthetic travel clip", "511", 11, off=True),
+        ),
+    )
+    return n(
+        "document",
+        "Instagram",
+        group(*nav_rail()),
+        main,
+        btn("Navigate to previous reel"),
+        btn("Messages - 1 new notification"),
+        value=IG + "reels/DSynth01/",
+        rect=VIEW,
+    )
+
+
+def profile_tree(user: str = "me_user") -> RawNode:
+    """Own-profile grid: tiles are links to /<user>/p|reel/<code>/ named '<alt> Clip'."""
+    main = n(
+        "main",
+        "",
+        link(user, f"{IG}{user}/#"),
+        link("Posts", f"{IG}{user}/"),
+        link("Reels", f"{IG}{user}/reels/"),
+        link("Saved", f"{IG}{user}/saved/"),
+        link("View trip highlight", f"{IG}stories/highlights/1/"),
+        link("sunrise over the lake", f"{IG}{user}/p/PhotoA1/"),
+        link("Carousel", f"{IG}{user}/p/CarB2/"),
+        link("", f"{IG}{user}/p/NoAlt3/"),
+        link("Trip vlog Clip", f"{IG}{user}/reel/ClipC4/", n("image", "Trip vlog"), off=True),
+    )
+    return n("document", "Instagram", group(*nav_rail(user)), main, value=f"{IG}{user}/", rect=VIEW)
+
+
+def loading_tree() -> RawNode:
+    main = n("main", "", *[n("statusbar", "Loading...") for _ in range(4)])
+    return n(
+        "document",
+        "Instagram",
+        group(*nav_rail()),
+        main,
+        *[btn(f"filler {i}") for i in range(10)],
+        value=IG + "reels/",
+        rect=VIEW,
     )
 
 

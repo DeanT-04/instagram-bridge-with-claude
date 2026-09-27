@@ -14,7 +14,13 @@ SNAPSHOT_JS = """([maxText, maxNodes]) => {
     const st = getComputedStyle(el);
     return st.visibility !== 'hidden' && st.display !== 'none' && st.opacity !== '0';
   };
-  const clean = (s) => (s || '').replace(/\\s+/g, ' ').trim().slice(0, 160);
+  // String.slice counts UTF-16 units: never cut an emoji's surrogate pair in half (a lone
+  // surrogate reaches Python as U+FFFD).
+  const cut = (s, n) => {
+    const out = s.slice(0, n);
+    return /[\\uD800-\\uDBFF]$/.test(out) ? out.slice(0, -1) : out;
+  };
+  const clean = (s) => cut((s || '').replace(/\\s+/g, ' ').trim(), 160);
   const nodes = [];
   const seen = new Set();
   const push = (node) => {
@@ -40,6 +46,6 @@ SNAPSHOT_JS = """([maxText, maxNodes]) => {
   const main = document.querySelector('main') || document.body;
   const text = main ? main.innerText : '';
   return {url: location.href, title: document.title,
-          text: (text || '').replace(/\\n{2,}/g, '\\n').slice(0, maxText),
+          text: cut((text || '').replace(/\\n{2,}/g, '\\n'), maxText),
           nodes, truncated: nodes.length >= maxNodes};
 }"""

@@ -6,7 +6,22 @@ import pytest
 
 from heliograph.drivers.uia import nav, read
 from heliograph.drivers.uia.tree import build_snapshot
-from tests.uia.fakes import IG, VIEW, btn, home_tree, link, n, reels_tree, snap, text
+from tests.uia.fakes import (
+    IG,
+    OFF,
+    VIEW,
+    as_article,
+    btn,
+    home_tree,
+    link,
+    loading_tree,
+    n,
+    profile_tree,
+    reels_tree,
+    reels_tree_with_trailing_controls,
+    snap,
+    text,
+)
 
 
 @pytest.mark.parametrize(
@@ -60,6 +75,81 @@ def test_reel_posts_use_video_player_segments() -> None:
     assert (first["like_count"], first["comment_count"]) == (2869, 12)
     assert first["permalink"] == IG + "reels/DSynth01/"  # from URL: only on-screen reel
     assert posts[1]["permalink"] is None and posts[1]["comment_count"] == 11
+
+
+def test_last_reel_does_not_swallow_page_controls() -> None:
+    """Live bug: the last (offscreen) reel's segment ran to the end of the document and
+    picked up the visible "Navigate to previous reel" button as its caption/visibility."""
+    s = snap(reels_tree_with_trailing_controls())
+    posts = read.visible_posts(s)
+    assert [p["author"] for p in posts] == ["creator.one"]
+    assert posts[0]["caption"] == "A synthetic comedy clip" and posts[0]["kind"] == "reel"
+    last = read.visible_posts(s, visible_only=False)[-1]
+    assert last["author"] == "_creator_two" and last["caption"] == "a synthetic travel clip"
+
+
+def test_profile_grid_tiles() -> None:
+    s = snap(profile_tree("me_user"))
+    posts = read.visible_posts(s, visible_only=False)
+    assert [p["permalink"] for p in posts] == [
+        IG + "p/PhotoA1/",
+        IG + "p/CarB2/",
+        IG + "p/NoAlt3/",
+        IG + "reel/ClipC4/",
+    ]
+    assert {p["kind"] for p in posts} == {"grid"}
+    assert {p["author"] for p in posts} == {"me_user"}
+    assert [p["caption"] for p in posts] == ["sunrise over the lake", None, None, "Trip vlog"]
+    assert posts[3]["has_video"] and not posts[0]["has_video"]
+    assert s.get(posts[0]["refs"]["permalink"]).value == IG + "me_user/p/PhotoA1/"  # type: ignore[union-attr]
+    assert len(read.visible_posts(s)) == 3  # the Clip tile is below the fold
+
+
+def test_feed_permalinks_are_not_duplicated_as_grid_tiles() -> None:
+    posts = read.visible_posts(snap(home_tree()), visible_only=False)
+    assert [p["kind"] for p in posts] == ["feed", "feed", "feed"]
+
+
+def test_tall_photo_filling_screen_is_visible() -> None:
+    """Header and action row both offscreen, only the article (photo) on screen."""
+    art = as_article(
+        n(
+            "group",
+            "",
+            link("bob", IG + "bob/", rect=OFF, off=True),
+            link("2 h", IG + "p/Tall1/", rect=OFF, off=True),
+            n("image", "Photo by bob on September 1, 2026."),
+            btn("Like", off=True),
+            btn("Save", off=True),
+        )
+    )
+    art.rect = (0, -400, 600, 1400)
+    s = build_snapshot(n("document", "", n("main", "", art), value=IG, rect=VIEW))
+    posts = read.visible_posts(s)
+    assert len(posts) == 1 and posts[0]["permalink"] == IG + "p/Tall1/"
+
+
+@pytest.mark.parametrize(
+    ("url", "expected"),
+    [
+        (IG + "p/Abc_1/", (IG + "p/Abc_1/", None)),
+        (IG + "reels/Abc-2/", (IG + "reels/Abc-2/", None)),
+        (IG + "alice/reel/Xyz/", (IG + "reel/Xyz/", "alice")),
+        (IG + "al.ice/p/Xyz/?img_index=1", (IG + "p/Xyz/", "al.ice")),
+        (IG + "alice/reels/", None),
+        (IG + "reels/audio/123/", None),
+        (IG + "alice/", None),
+        (None, None),
+    ],
+)
+def test_permalink_of(url: str | None, expected: tuple[str, str | None] | None) -> None:
+    assert read.permalink_of(url) == expected
+
+
+def test_is_loading() -> None:
+    assert read.is_loading(snap(loading_tree()))
+    assert read.is_loading(build_snapshot(n("document", "", btn("x"), value=IG, rect=VIEW)))
+    assert not read.is_loading(snap(home_tree()))
 
 
 def test_unread_badges() -> None:

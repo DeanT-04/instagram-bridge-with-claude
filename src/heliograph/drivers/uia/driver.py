@@ -15,7 +15,7 @@ from typing import Any, Literal
 from heliograph.drivers.uia import actions, nav, read
 from heliograph.drivers.uia.core import _norm, _same_place
 from heliograph.drivers.uia.tree import Node
-from heliograph.drivers.uia.writes import WriteActions, is_write_control
+from heliograph.drivers.uia.writes import WriteActions, is_write_control, unsafe_key_reason
 from heliograph.errors import ElementNotFoundError, UnsafeActionError
 
 __all__ = ["UiaDriver"]
@@ -39,11 +39,13 @@ class UiaDriver(WriteActions):
         role: str | None = None,
         exact: bool = True,
         prefer: actions.ClickMethod = "invoke",
+        allow_large: bool = False,
     ) -> dict[str, Any]:
         """Click by ``ref`` from the last snapshot, or by ``name``/``role`` (fresh snapshot).
 
         Read-only use only: write controls (Like/Follow/Save/...) go through the
-        ``confirm=True`` methods of :class:`~.writes.WriteActions`.
+        ``confirm=True`` methods of :class:`~.writes.WriteActions`. The mouse fallback
+        refuses container-sized elements unless ``allow_large`` (see :mod:`.actions`).
         """
         async with self._span("click", ref=ref, target_name=name, role=role) as s:
             if ref is None:
@@ -54,8 +56,10 @@ class UiaDriver(WriteActions):
                 await self.require_foreground()
             try:
                 method = await self._worker.run(
-                    actions.click, self._handle(node.ref), prefer=prefer
+                    actions.click, self._handle(node.ref), prefer=prefer, allow_large=allow_large
                 )
+            except UnsafeActionError:
+                raise
             except Exception:
                 if ref is not None:
                     raise
@@ -65,10 +69,33 @@ class UiaDriver(WriteActions):
                 node = self._resolve(None, name, role, exact)
                 self._refuse_write_control(node)
                 method = await self._worker.run(
-                    actions.click, self._handle(node.ref), prefer=prefer
+                    actions.click, self._handle(node.ref), prefer=prefer, allow_large=allow_large
                 )
             s.set(target=node.name, clicked_ref=node.ref, method=method)
             return {"ref": node.ref, "name": node.name, "role": node.role, "method": method}
+
+    async def _guard_keys(self, keys: str, confirm: bool, target: Node | None = None) -> bool:
+        """Refuse keystrokes that could post/send/press a write control without ``confirm``.
+
+        ``target`` is the element the keys go to, else the element with keyboard focus
+        (the window must already be in the foreground). Returns True when the keys are a
+        confirmed write, so the caller takes a shared write-rate-limit slot.
+        """
+        if target is not None:
+            focused: tuple[str, str] | None = (target.role, target.name)
+            write_control = is_write_control(target, self._snap)
+        else:
+            focused = await self._worker.run(actions.focused_element)
+            write_control = None
+        reason = unsafe_key_reason(keys, focused, write_control=write_control)
+        if reason is None:
+            return False
+        if not confirm:
+            raise UnsafeActionError(
+                f"refusing to send {keys!r}: {reason}",
+                hint="Ask the user for explicit confirmation, then pass confirm=True.",
+            )
+        return True
 
     async def type_text(
         self,
@@ -79,31 +106,59 @@ class UiaDriver(WriteActions):
         role: str | None = "edit",
         clear: bool = False,
         submit: bool = False,
+        confirm: bool = False,
     ) -> None:
-        """Type into a field (``ref``/``name``) or the focused element; Enter if ``submit``."""
+        """Type into a field (``ref``/``name``) or the focused element; Enter if ``submit``.
+
+        ``submit`` (or a newline in ``text``) into a comment/message box, or typing into a
+        write control, raises :class:`UnsafeActionError` unless ``confirm=True`` (which
+        then also takes a shared write-rate-limit slot).
+        """
         async with self._span("type_text", chars=len(text), ref=ref, target_name=name):
-            await self.require_foreground()
-            if ref is None and name is None:
+            keys = text + ("{Enter}" if submit else "")
+            target = None
+            if ref is not None or name is not None:
+                if ref is None:
+                    await self._worker.run(self._snapshot_sync)
+                target = self._resolve(ref, name, role)
+                is_write = await self._guard_keys(keys, confirm, target)
+                await self.require_foreground()
+            else:
+                await self.require_foreground()
+                is_write = await self._guard_keys(keys, confirm)
+            if is_write:
+                self._reserve_write("type_text")
+            if target is None:
                 await self._worker.run(actions.type_text, text, None, clear=clear)
-            for attempt in range(2 if ref is None and name is not None else 1):
-                if ref is not None or name is not None:
-                    if ref is None:
-                        await self._worker.run(self._snapshot_sync)
-                    handle = self._handle(self._resolve(ref, name, role).ref)
-                    try:
-                        await self._worker.run(actions.type_text, text, handle, clear=clear)
-                        break
-                    except Exception:
-                        if attempt or ref is not None:
-                            raise
-                        await asyncio.sleep(0.5)  # stale element mid-transition: retry
+            else:
+                try:
+                    await self._worker.run(
+                        actions.type_text, text, self._handle(target.ref), clear=clear
+                    )
+                except Exception:
+                    if ref is not None:
+                        raise
+                    await asyncio.sleep(0.5)  # stale element mid-transition: retry by name
+                    await self._worker.run(self._snapshot_sync)
+                    retry = self._resolve(None, name, role)
+                    if (retry.role, retry.name) != (target.role, target.name):
+                        raise
+                    await self._worker.run(
+                        actions.type_text, text, self._handle(retry.ref), clear=clear
+                    )
             if submit:
                 await self._worker.run(actions.press_keys, "{Enter}")
 
-    async def press(self, keys: str) -> None:
-        """Send keys to the app (uiautomation syntax: ``{Esc}``, ``{Ctrl}a``, ``{PageDown}``)."""
+    async def press(self, keys: str, *, confirm: bool = False) -> None:
+        """Send keys to the app (uiautomation syntax: ``{Esc}``, ``{Ctrl}a``, ``{PageDown}``).
+
+        Enter (any modifiers) while a comment/message box has focus, or Enter/Space on a
+        focused write control, raises :class:`UnsafeActionError` unless ``confirm=True``.
+        """
         async with self._span("press", keys=keys):
             await self.require_foreground()
+            if await self._guard_keys(keys, confirm):
+                self._reserve_write("press")
             await self._worker.run(actions.press_keys, keys)
 
     def _scroll_sync(self, direction: Literal["up", "down"], pages: int) -> str | None:
@@ -200,12 +255,30 @@ class UiaDriver(WriteActions):
             s.set(method=result["method"], url=result["url"])
             return {"section": section, **result}
 
-    async def visible_posts(self, *, visible_only: bool = True) -> list[dict[str, Any]]:
-        """Posts/reels on screen (fresh snapshot); see :func:`read.visible_posts`."""
-        snap = await self.take_snapshot()
-        async with self._span("visible_posts") as s:
+    async def visible_posts(
+        self, *, visible_only: bool = True, wait: float = 8.0
+    ) -> list[dict[str, Any]]:
+        """Posts/reels/grid tiles on screen (fresh snapshot); see :func:`read.visible_posts`.
+
+        The web view renders lazily: right after launch or navigation the document can be
+        nearly empty or show ``Loading...`` placeholders. While that is the case (or the
+        section normally shows posts but none are found yet) snapshots are retried for up
+        to ``wait`` seconds instead of reporting zero posts.
+        """
+        deadline = time.monotonic() + max(0.0, wait)
+        attempts = 0
+        while True:
+            snap = await self.take_snapshot()
+            attempts += 1
             posts = read.visible_posts(snap, visible_only=visible_only)
-            s.set(count=len(posts))
+            if posts or time.monotonic() >= deadline:
+                break
+            section = read.current_section(snap, nav.own_username(snap))
+            if not (read.is_loading(snap) or section in read.POST_SECTIONS):
+                break
+            await asyncio.sleep(0.5)
+        async with self._span("visible_posts") as s:
+            s.set(count=len(posts), attempts=attempts, nodes=len(snap))
             return posts
 
     async def unread_badges(self) -> dict[str, int]:

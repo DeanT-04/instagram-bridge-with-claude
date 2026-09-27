@@ -8,7 +8,7 @@ import pytest
 
 from heliograph.drivers.uia import UiaDriver, app
 from heliograph.drivers.uia.tree import build_snapshot
-from heliograph.drivers.uia.writes import WriteActions, is_write_control, normalize_control_name
+from heliograph.drivers.uia.writes import is_write_control, normalize_control_name
 from heliograph.errors import UnsafeActionError
 from tests.uia.fakes import btn, group, home_tree, n, snap
 
@@ -26,7 +26,6 @@ def driver() -> UiaDriver:
     d = UiaDriver()
     d._worker = _NoWorker()  # type: ignore[assignment]
     d._snap = snap(home_tree())
-    WriteActions._last_write = 0.0
     return d
 
 

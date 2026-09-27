@@ -1,25 +1,35 @@
 """Write actions (like, save, follow, comment) of the UIA driver.
 
 Every write requires ``confirm=True`` (else :class:`UnsafeActionError`), checks that the
-target ref really is the expected control (by name) in the current snapshot, and is
-throttled by ``settings.write_min_interval`` (:class:`RateLimitedError`). The generic
-``click`` refuses write controls so they cannot be pressed by accident.
+target ref really is the expected control (by name) in the current snapshot, and reserves a
+slot of the cross-process :class:`~heliograph.writelimit.SharedWriteLimiter` (the same
+budget as CDP writes; :class:`RateLimitedError` when too soon). The generic ``click``
+refuses write controls, and :func:`unsafe_key_reason` guards keystrokes (Enter in a
+comment/message box posts it) so neither can bypass confirmation.
 """
 
 from __future__ import annotations
 
 import asyncio
-import time
+import re
 import unicodedata
-from typing import Any, ClassVar
+from typing import Any
 
-from heliograph.config import get_settings
 from heliograph.drivers.uia import actions
 from heliograph.drivers.uia.core import UiaCore
 from heliograph.drivers.uia.tree import Node, Snapshot
 from heliograph.errors import ElementNotFoundError, RateLimitedError, UnsafeActionError
+from heliograph.writelimit import SharedWriteLimiter
 
-__all__ = ["WRITE_CONTROL_NAMES", "WriteActions", "is_write_control", "normalize_control_name"]
+__all__ = [
+    "WRITE_CONTROL_NAMES",
+    "WriteActions",
+    "is_compose_box",
+    "is_submit_keys",
+    "is_write_control",
+    "normalize_control_name",
+    "unsafe_key_reason",
+]
 
 WRITE_CONTROL_NAMES = frozenset(
     {
@@ -96,10 +106,52 @@ def is_write_control(node: Node, snap: Snapshot | None = None) -> bool:
     return False
 
 
+# Enter/Return (any modifiers: {Ctrl}{Enter}...) or a raw newline submits a focused box;
+# Space also activates a focused button.
+_SUBMIT_KEYS = re.compile(r"\{\s*(enter|return)\b[^}]*\}|[\r\n]", re.IGNORECASE)
+_ACTIVATE_KEYS = re.compile(r"\{\s*space\b[^}]*\}| ", re.IGNORECASE)
+_COMPOSE_WORDS = re.compile(r"comment|message|reply|caption|chat|write|note|send", re.I)
+_SAFE_FIELDS = re.compile(r"search", re.IGNORECASE)
+
+
+def is_submit_keys(keys: str) -> bool:
+    """True if ``keys`` (uiautomation SendKeys syntax, or typed text) contains Enter."""
+    return bool(_SUBMIT_KEYS.search(keys or ""))
+
+
+def is_compose_box(role: str, name: str) -> bool:
+    """True for a comment/message/caption field (or any text field that is not a search
+    box): pressing Enter there posts/sends."""
+    if _SAFE_FIELDS.search(name or ""):
+        return False
+    return role == "edit" or bool(_COMPOSE_WORDS.search(name or "") and role != "hyperlink")
+
+
+def unsafe_key_reason(
+    keys: str, focused: tuple[str, str] | None, *, write_control: bool | None = None
+) -> str | None:
+    """Why sending ``keys`` to the ``(role, name)`` element with focus could change the
+    account without confirmation, or None if it cannot. ``write_control`` overrides the
+    name-based write-control test (e.g. from :func:`is_write_control` with ancestors)."""
+    submit = is_submit_keys(keys)
+    activate = submit or bool(_ACTIVATE_KEYS.search(keys or ""))
+    if not activate:
+        return None
+    if focused is None:
+        return "the focused element is unknown" if submit else None
+    role, name = focused
+    if submit and is_compose_box(role, name):
+        return f"Enter in {role} {name!r} can post a comment or send a message"
+    if write_control if write_control is not None else _is_write_name(name):
+        return f"the focused control {name!r} changes the account"
+    return None
+
+
 class WriteActions(UiaCore):
     """Confirm-gated write actions on top of :class:`UiaCore`."""
 
-    _last_write: ClassVar[float] = 0.0
+    write_limiter: SharedWriteLimiter = SharedWriteLimiter(name="uia.write")
+    """Shared with CDP writes (``~/.heliograph/ratelimit.json``); tests may replace it."""
 
     def _resolve(
         self, ref: str | None, name: str | None, role: str | None, exact: bool = True
@@ -125,14 +177,16 @@ class WriteActions(UiaCore):
         return self._snap.handle(ref)
 
     def _check_write(self, op: str, confirm: bool) -> None:
+        """Refuse without ``confirm``; fail fast if the shared write budget is exhausted."""
         if not confirm:
             raise UnsafeActionError(f"{op} changes your Instagram account; pass confirm=True")
-        interval = get_settings().write_min_interval
-        wait = WriteActions._last_write + interval - time.monotonic()
-        if WriteActions._last_write and wait > 0:
-            raise RateLimitedError(
-                f"{op}: writes are limited to one per {interval:.0f}s", retry_after=wait
-            )
+        wait = self.write_limiter.remaining()
+        if wait > 0:
+            raise RateLimitedError(f"{op}: writes are rate limited", retry_after=wait)
+
+    def _reserve_write(self, op: str) -> None:
+        """(just before acting) Take the shared write slot, atomically across processes."""
+        self.write_limiter.try_acquire(op)
 
     async def _press_write(
         self, op: str, ref: str, wanted: set[str], done: set[str], confirm: bool
@@ -148,8 +202,8 @@ class WriteActions(UiaCore):
                     f"{ref} is {node.role} {node.name!r}, expected one of {sorted(wanted)}",
                     hint="Take a new snapshot; refs change when the page changes.",
                 )
+            self._reserve_write(op)
             method = await self._worker.run(actions.click, self._handle(ref))
-            WriteActions._last_write = time.monotonic()
             s.set(changed=True, method=method)
             return {"ref": ref, "changed": True, "method": method}
 
@@ -192,7 +246,7 @@ class WriteActions(UiaCore):
             if not boxes:
                 raise ElementNotFoundError("comment box did not appear")
             await self._worker.run(actions.type_text, text, snap.handle(boxes[0].ref))
+            self._reserve_write("comment")
             await self._worker.run(actions.press_keys, "{Enter}")
-            WriteActions._last_write = time.monotonic()
             s.set(box=boxes[0].name)
             return {"ref": ref, "changed": True}

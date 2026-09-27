@@ -239,7 +239,7 @@ class CdpDriver:
         folder = self.settings.eye_path / "artifacts"
         stem = f"{time.strftime('%Y%m%d-%H%M%S')}-{name.replace('.', '_')}"
         try:
-            folder.mkdir(parents=True, exist_ok=True)
+            self.settings.ensure_dir(folder)  # owner-only (failure artifacts are personal)
             shot = folder / f"{stem}.png"
             await self._page.screenshot(path=str(shot), timeout=5000)
             attach_artifact(shot, "screenshot")

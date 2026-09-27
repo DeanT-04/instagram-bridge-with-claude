@@ -32,11 +32,6 @@ def _dry_run(what: str, why: str) -> dict[str, Any]:
                          "only if they say yes, call again with confirm=true."}
 
 
-def _last_snapshot(driver: Any) -> Any:
-    # UiaDriver keeps the snapshot its refs belong to; prefer a public accessor if present.
-    return getattr(driver, "last_snapshot", None) or getattr(driver, "_snap", None)
-
-
 def register(server: FastMCP, rt: Runtime) -> None:
     """Register the live-app tools."""
 
@@ -96,15 +91,21 @@ def register(server: FastMCP, rt: Runtime) -> None:
         Unfollow...) are refused and return a dry run unless confirm=true — set it ONLY
         after the user explicitly said yes in chat. With confirm=true, Like/Unlike/Save/
         Remove(unsave)/Follow are pressed through the driver's rate-limited write path."""
+        from heliograph.drivers.uia.writes import is_write_control  # lazy: driver package
+
         if ref is None and name is None:
             raise ValueError("pass ref or name")
         driver = await rt.uia()
         node = None
+        snap = driver.last_snapshot  # the snapshot the [eN] refs belong to
         if ref is not None:
-            snap = _last_snapshot(driver)
             node = snap.get(ref) if snap is not None else None
         label = node.name if node is not None else (name or "")
-        risky = bool(WRITE_VERBS.search(label)) or bool(name and WRITE_VERBS.search(name))
+        risky = (
+            bool(WRITE_VERBS.search(label))
+            or bool(name and WRITE_VERBS.search(name))
+            or (node is not None and is_write_control(node, snap))  # icon inside Like...
+        )
         if risky and not confirm:
             return _dry_run(f"click {label or ref!r} in the Instagram app",
                             "this control can change the user's Instagram account")
@@ -119,9 +120,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
             if method is not None:
                 result = await getattr(driver, method)(node.ref, confirm=True)
                 return {"performed": True, "action": method, **dict(result)}
-            from heliograph.drivers.uia.writes import is_write_control
-
-            if is_write_control(node):
+            if is_write_control(node, snap):
                 raise UnsafeActionError(
                     f"{node.name!r} has no confirmed click handler in the live app",
                     hint="Use the ig_* write tools (ig_comment, ig_send_dm, ig_unfollow...).")
@@ -142,14 +141,21 @@ def register(server: FastMCP, rt: Runtime) -> None:
     async def app_type(text: str, ref: str | None = None, name: str | None = None,
                        submit: bool = False, confirm: bool = False) -> dict[str, Any]:
         """Type text into a field of the Instagram app (by [eN] ref or field name, else the
-        focused element), e.g. the search box. submit=true presses Enter, which can send a
-        message or post a comment, so it requires confirm=true (only after the user said
-        yes in chat); without it a dry run is returned."""
-        if submit and not confirm:
+        focused element), e.g. the search box. submit=true (or a newline in the text)
+        presses Enter, which can send a message or post a comment, so it requires
+        confirm=true (only after the user said yes in chat); without it a dry run is
+        returned. The driver also refuses keystrokes into a focused comment/message box
+        or write control without confirmation."""
+        from heliograph.drivers.uia.writes import is_submit_keys  # lazy: driver package
+
+        if (submit or is_submit_keys(text)) and not confirm:
             return _dry_run(f"type {text!r} and press Enter in the Instagram app",
                             "pressing Enter can send a message or post a comment")
         driver = await rt.uia()
-        await driver.type_text(text, ref, name=name, submit=submit)
+        try:
+            await driver.type_text(text, ref, name=name, submit=submit, confirm=confirm)
+        except UnsafeActionError as exc:
+            return _dry_run(f"type {text!r} in the Instagram app", str(exc))
         return {"performed": True, "typed_chars": len(text), "submitted": submit}
 
     @tool(server, annotations=READ_ONLY)
