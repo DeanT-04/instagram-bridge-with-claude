@@ -28,7 +28,9 @@ _SENSITIVE_EXACT = frozenset(
         "authorization", "proxyauthorization", "auth", "password", "passwd", "pwd", "pass",
         "secret", "token", "apikey", "xapikey", "privatekey", "dsuserid", "igdid", "mid",
         "datr", "rur", "shbid", "shbts", "xigwwwclaim", "xigsetauthorization", "credentials",
-        "credential", "otp", "twofactorcode", "verificationcode",
+        "credential", "otp", "twofactorcode", "verificationcode", "igsetauthorization",
+        "igudsuserid", "igurur", "iguigdid", "igushbid", "igushbts", "igintendeduserid",
+        "xmid", "wwwclaim", "encpassword",
     }
 )
 _SENSITIVE_SUFFIXES = ("token", "secret", "password", "passwd", "apikey", "cookie", "sessionid")
@@ -37,24 +39,48 @@ _SENSITIVE_PREFIXES = ("password", "secret", "cookie")
 _COOKIE_NAMES = (
     "sessionid|csrftoken|ds_user_id|ig_did|mid|datr|rur|shbid|shbts|fr|xs|c_user|sb|ig_nrcb"
 )
-_TEXT_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+# Keys whose value is a secret when they appear as ``key: value`` / ``key=value`` /
+# ``"key": "value"`` inside free text (reprs, JSON dumps, exception messages).
+_SECRET_TEXT_KEYS = (
+    r"[\w-]*?(?:password|passwd|secret|api[_-]?key|token)|pwd|"
+    r"(?:set-)?cookies?|(?:proxy-|x-ig-set-|ig-set-)?authorization|"
+    r"x-ig-www-claim|ig-u-[\w-]+|ig-intended-user-id|x-mid|sessionid|ds_user_id"
+)
+_QUOTED_OR_BARE = r"(?:\"[^\"]*\"|'[^']*'|[^\s\"'&;,}]+)"
+# Signed query parameters on Instagram/Facebook CDN (and S3-style) URLs.
+_SIGNED_QUERY = (
+    r"oh|oe|efg|ccb|edm|_nc_[a-z0-9_]+|sig|signature|"
+    r"x-amz-(?:signature|credential|security-token)"
+)
+
+
+def _mask_kv(match: re.Match[str]) -> str:
+    value = match.group(2)
+    quote = value[0] if value[:1] in ("'", '"') and len(value) >= 2 else ""
+    return f"{match.group(1)}{quote}{REDACTED}{quote}"
+
+
+_TEXT_PATTERNS: tuple[tuple[re.Pattern[str], Any], ...] = (
     # Authorization schemes.
     (re.compile(r"(?i)\b(bearer|basic|token|igt:\d+:?)\s+[A-Za-z0-9._~+/=:\-]{6,}"),
      rf"\1 {REDACTED}"),
-    # Header-style lines: "Cookie: ...", "Authorization: ...".
+    # Bare Instagram auth tokens (IGT:2:<base64>).
+    (re.compile(r"(?i)\bIGT:\d+:[A-Za-z0-9+/=_\-]{6,}"), REDACTED),
+    # Header-style lines: "Cookie: ...", "Authorization: ...", "IG-Set-Authorization: ...".
     (re.compile(r"(?im)^(\s*(?:set-)?cookie\s*:\s*).+$"), rf"\1{REDACTED}"),
-    (re.compile(r"(?im)^(\s*(?:proxy-)?authorization\s*:\s*).+$"), rf"\1{REDACTED}"),
-    # Cookie pairs anywhere in text.
-    (re.compile(rf"(?i)\b({_COOKIE_NAMES})=[^;\s&\"',]+"), rf"\1={REDACTED}"),
+    (re.compile(r"(?im)^(\s*[\w-]*authorization\s*:\s*).+$"), rf"\1{REDACTED}"),
+    # Cookie pairs anywhere in text (also URL-encoded ``name%3Dvalue`` and quoted values).
+    (re.compile(rf"(?i)\b({_COOKIE_NAMES})(=|%3D)([\"']?)[^;\s&\"',]+"),
+     rf"\1\2\3{REDACTED}"),
     # key=value / key: value / "key": "value" assignments for secret-ish keys.
     (
         re.compile(
-            r"(?i)([\"']?\b(?:password|passwd|pwd|secret|client_secret|api[_-]?key|"
-            r"access[_-]?token|refresh[_-]?token|auth[_-]?token|csrf[_-]?token|token)"
-            r"[\"']?\s*[:=]\s*[\"']?)[^\s\"'&;,}]+"
+            rf"(?i)([\"']?\b(?:{_SECRET_TEXT_KEYS})[\"']?\s*[:=]\s*)({_QUOTED_OR_BARE})"
         ),
-        rf"\1{REDACTED}",
+        _mask_kv,
     ),
+    # Signed CDN URL query parameters (oh=, oe=, _nc_ohc=, ...): the URL path is kept.
+    (re.compile(rf"(?i)([?&](?:{_SIGNED_QUERY})=)[^&#\s\"'<>]+"), rf"\1{REDACTED}"),
     # JSON Web Tokens.
     (re.compile(r"\beyJ[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}\.[A-Za-z0-9_\-]{5,}"), REDACTED),
     # Common API key shapes (sk-..., pk-lf-..., ghp_..., xox?-...).
@@ -80,6 +106,16 @@ def is_sensitive_key(key: object) -> bool:
         or k.endswith(_SENSITIVE_SUFFIXES)
         or k.startswith(_SENSITIVE_PREFIXES)
     )
+
+
+_COOKIE_NAME_SET = frozenset(_COOKIE_NAMES.split("|"))
+
+
+def _is_secret_name_value_pair(value: Mapping[Any, Any]) -> bool:
+    name = value.get("name")
+    if not isinstance(name, str) or "value" not in value:
+        return False
+    return name.lower() in _COOKIE_NAME_SET or is_sensitive_key(name)
 
 
 def _mask_long_token(match: re.Match[str]) -> str:
@@ -112,6 +148,12 @@ def redact(value: Any, *, _depth: int = 0) -> Any:
         if isinstance(value, bytes | bytearray | memoryview):
             return f"<{len(value)} bytes>"
         if isinstance(value, Mapping):
+            if _is_secret_name_value_pair(value):
+                # e.g. Playwright/CDP cookies: {"name": "sessionid", "value": "..."}
+                return {
+                    str(k): REDACTED if k == "value" else redact(v, _depth=_depth + 1)
+                    for k, v in value.items()
+                }
             return {
                 (k if isinstance(k, str) else str(k)): (
                     REDACTED if is_sensitive_key(k) and v not in (None, "")

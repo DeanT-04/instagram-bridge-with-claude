@@ -105,3 +105,75 @@ def test_deep_nesting_does_not_explode() -> None:
         cur["x"] = nxt
         cur = nxt
     assert redact(deep) is not None
+
+
+# --- Security review (M1): gaps found in the redactor. -------------------------------------
+
+
+@pytest.mark.parametrize(
+    ("text", "secret"),
+    [
+        # Signed CDN query parameters.
+        ("https://scontent.cdninstagram.com/v/x.mp4?_nc_ohc=AbCdEf12345&oh=00_AYBcd99&oe=66A1B2C3",
+         "00_AYBcd99"),
+        ("https://scontent.cdninstagram.com/v/x.mp4?_nc_ohc=AbCdEf12345&oe=66A1B2C3",
+         "AbCdEf12345"),
+        ("https://x.fbcdn.net/y.jpg?efg=eyJ2ZW5jb2RlX3RhZyI6&oe=66A1B2C3", "66A1B2C3"),
+        # Header/cookie keys inside reprs and JSON dumps.
+        ("{'Cookie': 'abc123def'}", "abc123def"),
+        ("{'authorization': 'abc123def456'}", "abc123def456"),
+        ('{"ds_user_id": "123456789"}', "123456789"),
+        ("headers={'X-IG-WWW-Claim': 'hmac.AR3abcdef'}", "hmac.AR3abcdef"),
+        # Quoted and URL-encoded cookie pairs.
+        ("Cookie(sessionid='12345%3Aabc')", "12345%3Aabc"),
+        ("sessionid%3D12345%3AabcDEF", "12345%3AabcDEF"),
+        # Instagram auth headers/tokens.
+        ("ig-set-authorization: IGT:2:eyJxxxxxxxx", "eyJxxxxxxxx"),
+        ("token is IGT:2:eyJkc191c2VyX2lk", "eyJkc191c2VyX2lk"),
+        # Prefixed password fields.
+        ("enc_password=#PWD_INSTAGRAM_BROWSER:10:1700000000:AbCd", "#PWD_INSTAGRAM"),
+        ("pwd='s3cr3t'", "s3cr3t"),
+    ],
+)
+def test_redact_text_security_review_gaps(text: str, secret: str) -> None:
+    out = redact_text(text)
+    assert secret not in out
+    assert REDACTED in out
+
+
+def test_signed_url_keeps_path() -> None:
+    out = redact_text("https://scontent.cdninstagram.com/v/t51/clip.mp4?oh=00_AYB123&oe=66A1")
+    assert out.startswith("https://scontent.cdninstagram.com/v/t51/clip.mp4?oh=")
+
+
+@pytest.mark.parametrize(
+    "key", ["IG-Set-Authorization", "IG-U-DS-USER-ID", "ig-u-rur", "X-MID", "enc_password"]
+)
+def test_instagram_header_keys_sensitive(key: str) -> None:
+    assert is_sensitive_key(key)
+
+
+def test_cookie_name_value_records_are_redacted() -> None:
+    cookies = [
+        {"name": "sessionid", "value": "123%3Aabc", "domain": ".instagram.com"},
+        {"name": "ds_user_id", "value": "42"},
+        {"name": "ig_lang", "value": "en"},
+    ]
+    out = redact({"items": cookies})
+    assert out["items"][0] == {"name": "sessionid", "value": REDACTED,
+                                      "domain": ".instagram.com"}
+    assert out["items"][1]["value"] == REDACTED
+    assert out["items"][2]["value"] == "en"
+
+
+def test_exception_message_and_traceback_are_redacted(isolated_home: object) -> None:
+    import json
+
+    from heliograph import eye
+
+    with pytest.raises(RuntimeError), eye.span("leaky"):
+        raise RuntimeError("GET https://i.instagram.com/api?x=1 Cookie sessionid=999%3Asecret")
+    line = (eye.get_eye().directory / "events.jsonl").read_text(encoding="utf-8")
+    assert "999%3Asecret" not in line
+    err = json.loads(line.splitlines()[-1])["error"]
+    assert REDACTED in err["message"] and "999%3Asecret" not in err["traceback"]

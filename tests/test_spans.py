@@ -199,3 +199,21 @@ def test_sqlite_query_filters(recorded: Recorded) -> None:
     tid = idx.query(name="uia.c")[0]["trace_id"]
     assert len(idx.query(trace_id=tid)) == 1
     assert idx.query(since=9e12) == []
+
+
+def test_eye_files_are_owner_only_on_posix(tmp_path: Path) -> None:
+    import os
+    import stat
+
+    from heliograph.eye.core import Eye
+
+    e = Eye(tmp_path / "eye2")
+    with eye.span("perm"):
+        pass
+    e.emit(eye.Event(name="x", trace_id="t"))
+    if os.name == "posix":
+        assert stat.S_IMODE((tmp_path / "eye2").stat().st_mode) == 0o700
+        for name in ("events.jsonl", "eye.db"):
+            assert stat.S_IMODE((tmp_path / "eye2" / name).stat().st_mode) == 0o600
+    assert (tmp_path / "eye2" / "events.jsonl").exists()
+    e.close()

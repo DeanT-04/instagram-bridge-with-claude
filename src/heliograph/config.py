@@ -26,9 +26,17 @@ LogLevel = Literal["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"]
 def ensure_private_dir(path: Path) -> Path:
     """Create ``path`` (and parents) if missing, restricting it to the current user.
 
-    On POSIX the directory mode is set to ``0o700``. On Windows the user profile is already
-    private by default, so only creation is performed. Returns ``path``.
+    On POSIX the directory mode is set to ``0o700``, and any missing parents created here
+    (e.g. ``~/.heliograph`` itself) are also created ``0o700``; pre-existing parents are
+    left untouched. On Windows the user profile is already private by default, so only
+    creation is performed. Returns ``path``.
     """
+    missing = [p for p in (path, *path.parents) if not p.exists()]
+    for p in reversed(missing):
+        try:
+            p.mkdir(mode=stat.S_IRWXU)
+        except FileExistsError:  # created concurrently
+            pass
     path.mkdir(parents=True, exist_ok=True)
     if os.name == "posix":
         try:
@@ -46,7 +54,9 @@ class Settings(BaseSettings):
 
     model_config = SettingsConfigDict(
         env_prefix="HELIOGRAPH_",
-        env_file=".env",
+        # Only the user's own ~/.heliograph/.env is trusted: a .env in the working
+        # directory (e.g. inside a cloned repo) must not be able to redirect paths.
+        env_file=Path.home() / ".heliograph" / ".env",
         env_file_encoding="utf-8",
         extra="ignore",
     )

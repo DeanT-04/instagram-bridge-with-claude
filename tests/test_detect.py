@@ -151,3 +151,36 @@ def test_detect_environment_composes(monkeypatch: pytest.MonkeyPatch) -> None:
     assert isinstance(report, EnvironmentReport)
     assert "browser" in report.critical_missing and not report.ok
     assert report.browser_profile_initialized is False
+
+
+def test_powershell_is_invoked_by_absolute_path(monkeypatch: pytest.MonkeyPatch) -> None:
+    import os
+
+    monkeypatch.setenv("SYSTEMROOT", r"C:\Windows")
+    exe = ig._powershell_exe()
+    assert exe.lower().endswith(os.path.join("system32", "windowspowershell", "v1.0",
+                                             "powershell.exe"))
+    monkeypatch.setenv("SYSTEMROOT", "relative")  # tampered/relative value is not trusted
+    assert ig._powershell_exe().lower().startswith("c:")
+    calls: list[list[str]] = []
+    monkeypatch.setattr(ig.subprocess, "run",
+                        lambda args, **k: calls.append(args) or _completed(""))
+    ig._run_powershell("Get-Date")
+    assert os.path.isabs(calls[0][0]) or calls[0][0].lower().startswith("c:")
+
+
+def test_detect_tool_ignores_current_directory_on_windows(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Any
+) -> None:
+    monkeypatch.setattr(sys, "platform", "win32")
+    bin_dir = tmp_path / "bin"
+    monkeypatch.setenv("PATH", ";".join([".", "relative", str(bin_dir)]))
+    looked: list[str] = []
+
+    def fake_which(cmd: str) -> str | None:
+        looked.append(cmd)
+        return cmd if cmd.startswith(str(bin_dir)) else None
+
+    monkeypatch.setattr(tools_mod.shutil, "which", fake_which)
+    assert tools_mod._which("ffmpeg") == str(bin_dir / "ffmpeg")
+    assert looked == [str(bin_dir / "ffmpeg")]  # "." and relative entries skipped

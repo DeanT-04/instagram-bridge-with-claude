@@ -64,3 +64,14 @@ def test_no_dirs_created_on_load(isolated_home: Path) -> None:
 def test_ensure_private_dir(tmp_path: Path) -> None:
     p = ensure_private_dir(tmp_path / "a" / "b")
     assert p.is_dir()
+
+
+def test_ensure_private_dir_creates_missing_parents_private(tmp_path: Path) -> None:
+    import os
+    import stat
+
+    p = ensure_private_dir(tmp_path / "home" / "eye")
+    assert p.is_dir()
+    if os.name == "posix":
+        for d in (tmp_path / "home", p):
+            assert stat.S_IMODE(d.stat().st_mode) == 0o700

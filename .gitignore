@@ -27,6 +27,18 @@ eye.db-*
 *.mp4
 downloads/
 state.json
+browser-profile/
+artifacts/
+*.har
+*.sqlite
+*.sqlite3
+*.db
+*.db-wal
+*.db-shm
+storage_state*.json
+cookies*.json
+*.cookies
+secrets*.json
 
 # OS / editor
 .DS_Store

@@ -7,6 +7,7 @@ every call, but sinks also keep their own failures contained.
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import threading
 from pathlib import Path
@@ -26,6 +27,19 @@ class Sink(Protocol):
 
     def close(self) -> None:
         """Flush and release resources."""
+
+
+def _private_opener(path: str, flags: int) -> int:
+    """``open`` opener creating new files as ``0o600`` (owner-only) on POSIX."""
+    return os.open(path, flags, 0o600)
+
+
+def _chmod_private(path: Path) -> None:
+    if os.name == "posix":
+        try:
+            path.chmod(0o600)
+        except OSError:  # pragma: no cover - e.g. not the owner
+            pass
 
 
 class JsonlSink:
@@ -58,7 +72,7 @@ class JsonlSink:
                 size = 0
             if size and size + len(data) > self.max_bytes:
                 self._rotate()
-            with self.path.open("ab") as fh:
+            with open(self.path, "ab", opener=_private_opener) as fh:
                 fh.write(data)
 
     def close(self) -> None:
@@ -95,6 +109,9 @@ class SqliteSink:
         self.path = path
         self._lock = threading.Lock()
         path.parent.mkdir(parents=True, exist_ok=True)
+        if not path.exists():  # create owner-only; SQLite's -wal/-shm files inherit the mode
+            os.close(_private_opener(str(path), os.O_WRONLY | os.O_CREAT))
+        _chmod_private(path)
         self._conn = sqlite3.connect(str(path), check_same_thread=False, timeout=5)
         self._conn.execute("PRAGMA journal_mode=WAL")
         self._conn.executescript(_SCHEMA)

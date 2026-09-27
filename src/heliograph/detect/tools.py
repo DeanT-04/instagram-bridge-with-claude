@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import importlib
 import importlib.metadata
+import os
 import shutil
 import subprocess
+import sys
 
 from heliograph.detect.models import PackageInfo, ToolInfo
 from heliograph.eye import span
@@ -13,10 +15,28 @@ from heliograph.eye import span
 __all__ = ["detect_package", "detect_tool"]
 
 
+def _which(name: str) -> str | None:
+    """``shutil.which`` without the implicit current-directory lookup on Windows.
+
+    On Windows ``shutil.which`` searches ``.`` before ``PATH``, so running
+    ``heliograph doctor`` inside a folder containing e.g. a planted ``ffmpeg.exe`` would
+    execute it. Only absolute ``PATH`` entries are searched here.
+    """
+    if sys.platform != "win32" or os.path.dirname(name):
+        return shutil.which(name)
+    for entry in os.environ.get("PATH", "").split(os.pathsep):
+        entry = entry.strip().strip('"')
+        if entry and os.path.isabs(entry):
+            found = shutil.which(os.path.join(entry, name))
+            if found:
+                return found
+    return None
+
+
 def detect_tool(name: str, *, version_arg: str = "-version", timeout: float = 10) -> ToolInfo:
     """Find ``name`` on PATH and read the first line of its version output. Never raises."""
     with span("detect.tool", tool=name) as s:
-        path = shutil.which(name)
+        path = _which(name)
         if not path:
             s.set(found=False)
             return ToolInfo(name=name, found=False, reason=f"{name} not found on PATH")

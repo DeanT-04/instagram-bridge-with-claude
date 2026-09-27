@@ -25,9 +25,21 @@ _PS_QUERY = (
 )
 
 
+def _powershell_exe() -> str:
+    """Absolute path to Windows PowerShell.
+
+    A bare ``"powershell"`` is resolved by ``CreateProcess``, which searches the current
+    directory before System32 - a ``powershell.exe`` planted there would be executed.
+    """
+    root = os.environ.get("SYSTEMROOT") or ""
+    if not os.path.isabs(root):
+        root = r"C:\Windows"
+    return os.path.join(root, "System32", "WindowsPowerShell", "v1.0", "powershell.exe")
+
+
 def _run_powershell(command: str, timeout: float = 30) -> subprocess.CompletedProcess[str]:
     return subprocess.run(
-        ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
+        [_powershell_exe(), "-NoProfile", "-NonInteractive", "-Command", command],
         capture_output=True,
         text=True,
         timeout=timeout,
