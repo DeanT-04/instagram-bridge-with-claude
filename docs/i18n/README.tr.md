@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="../assets/banner.svg" alt="Heliograph — Claude ile Instagram arasında sinyal" width="100%">
+  <img src="../assets/banner.png" alt="Heliograph — Claude ile Instagram arasında sinyal" width="100%">
 </p>
 
 <p align="center">
   <a href="#quick-start"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-E0A526?style=flat-square&labelColor=0B1026&logo=python&logoColor=F4EBD9"></a>
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
-  <a href="#how-it-works"><img alt="MCP server" src="https://img.shields.io/badge/MCP-server-F4EBD9?style=flat-square&labelColor=0B1026"></a>
+  <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
   <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
 </p>
 
@@ -35,13 +35,13 @@
 > **Neden "Heliograph"?** Tarihteki ilk fotoğraf bir *heliografi* idi (Niépce, 1820'ler). Heliograf aynı zamanda bir aynayla güneş ışığını uzaklara yansıtarak sinyal veren bir cihazdır. Bir fotoğraf makinesi ve bir köprü — bu proje tam olarak bu.
 
 > [!NOTE]
-> **Durum: erken geliştirme (v0.1.0).** Mimari netleşti ve çekirdek modüller geliştiriliyor. Aşağıdaki her özellik **Kullanılabilir**, **Geliştiriliyor** veya **Planlandı** olarak etiketlenmiştir — burada henüz yazılmamış hiçbir şey vaat edilmiyor.
+> **Durum: v0.1.0 — erken ama çalışıyor.** Kurulum, CLI, MCP sunucusu (41 araç), iki sürücü ve dosya hattı yayında. Okuma işlemleri Windows 11'de gerçek bir hesapla canlı doğrulandı (oturumdaki hesap, koleksiyonlar, koleksiyon gönderileri, arama, uygulama rozetleri, durum). **Yazma işlemleri** (beğenme, kaydetme, takip, yorum, DM…) uygulandı ve deneme modunda test edildi, ancak **henüz gerçek bir hesapla doğrulanmadı**.
 
 ## Ne yapar
 
 - **Claude'un Instagram'ı sizin gibi görmesini ve kullanmasını sağlar** — gerçek yüklü uygulamada, gerçek oturumunuzla.
-- **Yapılandırılmış veri çeker** (kaydedilmiş koleksiyonlar, reels meta verileri, açıklamalar, medya); bunu yalnızca bir kez giriş yaptığınız ayrı, özel bir tarayıcı profili üzerinden yapar.
-- **Reels'leri dosyalara dönüştürür** — video, anahtar kareler, zaman damgalı bir döküm ve meta veriler; Claude'un okuyup üzerinde düşünebileceği tek bir klasörde.
+- **Yapılandırılmış veri çeker** (kaydedilmiş koleksiyonlar, reels meta verileri, açıklamalar, DM'ler, medya); bunu yalnızca bir kez giriş yaptığınız özel bir tarayıcı profili üzerinden yapar.
+- **Reels'leri dosyalara dönüştürür** — video, anahtar kareler, bir kontak baskı, zaman damgalı bir döküm ve meta veriler; Claude'un okuyabileceği *ve bakabileceği* tek bir klasörde.
 - **Kendini izler** — *Göz*, her araç çağrısını, sürücü eylemini ve alt süreci yerel olarak kaydeder; böylece hatalar sizin veya Claude tarafından açıklanabilir.
 
 ## Özellikler
@@ -50,29 +50,29 @@
   <tr>
     <td width="33%" valign="top">
       <h3>Canlı uygulama sürücüsü</h3>
-      Microsoft Store'daki Instagram uygulamasını Windows UI Automation ile kontrol eder: ekranı okuma, gezinme, beğenme, kaydetme, takip etme, ekran görüntüsü alma. Hiçbir giriş adımı yok.<br><br><sub><b>Geliştiriliyor</b></sub>
+      Microsoft Store'daki Instagram uygulamasını Windows UI Automation ile kontrol eder: ekranı okuma, gezinme, kaydırma, ekran görüntüsü, tıklama veya yazma (onayınızla). Hiçbir giriş adımı yok.<br><br><sub><b>Kullanılabilir · Windows</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Derin sürücü</h3>
-      Chrome DevTools Protocol ile yönetilen özel bir Edge/Chrome profili; temiz JSON, video URL'leri ve toplu işler için Instagram'ın kendi web API'sini sayfanın içinden okur.<br><br><sub><b>Geliştiriliyor</b></sub>
+      Chrome DevTools Protocol ile yönetilen özel bir Edge/Chrome profili; temiz JSON, video URL'leri ve toplu işler için Instagram'ın kendi web API'sini sayfanın içinden okur.<br><br><sub><b>Kullanılabilir</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Reels dosyaları</h3>
-      Algısal tekilleştirmeli ffmpeg sahne değişimi anahtar kareleri ve faster-whisper dökümü; her reel için bir Markdown dosyasında toplanır.<br><br><sub><b>Geliştiriliyor</b></sub>
+      Algısal tekilleştirmeli ffmpeg sahne değişimi anahtar kareleri, bir kontak baskı ve faster-whisper dökümü; her reel için bir Markdown dosyasında toplanır.<br><br><sub><b>Kullanılabilir</b></sub>
     </td>
   </tr>
   <tr>
     <td width="33%" valign="top">
       <h3>MCP sunucusu</h3>
-      Klasörü açtığınızda <code>.mcp.json</code> aracılığıyla Claude Code'a kendini otomatik kaydeden bir FastMCP sunucusu.<br><br><sub><b>Geliştiriliyor</b></sub>
+      Klasörü açtığınızda <code>.mcp.json</code> ile Claude Code'a otomatik kaydolan 41 araç ve iki proje becerisi.<br><br><sub><b>Kullanılabilir</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Göz</h3>
-      Önce yerel izleme: span'ler, iz kimlikleri, gizli bilgi maskeleme, hata anlık görüntüleri, terminalde canlı görünüm ve Claude'un okuyabileceği bir rapor.<br><br><sub><b>Kullanılabilir (erken)</b></sub>
+      Önce yerel izleme: span'ler, iz kimlikleri, gizli bilgi maskeleme, hata ekran görüntüleri ve DOM anlık görüntüleri, terminalde canlı görünüm ve Claude'un okuyabileceği raporlar.<br><br><sub><b>Kullanılabilir</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Güvenlik önlemleri</h3>
-      Yazma işlemleri açık onay gerektirir, her şey hız sınırlıdır, indirmeler Instagram CDN'i ile sınırlıdır ve hiçbir parola Heliograph'tan geçmez.<br><br><sub><b>Geliştiriliyor</b></sub>
+      Yazma işlemleri onay olmadan yalnızca deneme olarak çalışır, her şey hız sınırlıdır, URL'ler ve indirmeler izin listesindedir ve hiçbir parola Heliograph'tan geçmez.<br><br><sub><b>Kullanılabilir · yazmalar henüz canlı doğrulanmadı</b></sub>
     </td>
   </tr>
 </table>
@@ -80,7 +80,7 @@
 <a id="quick-start"></a>
 ## Hızlı başlangıç
 
-**Gerekenler:** Python 3.11+ (3.12 önerilir), [uv](https://docs.astral.sh/uv/), [ffmpeg](https://ffmpeg.org/), Microsoft Edge veya Google Chrome, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ve Windows'ta canlı uygulama sürücüsü için Microsoft Store'dan Instagram uygulaması.
+**Gerekenler:** Python 3.11+ (3.12 önerilir), [ffmpeg](https://ffmpeg.org/), Microsoft Edge veya Google Chrome, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) ve Windows'ta canlı uygulama sürücüsü için Microsoft Store'dan Instagram uygulaması. Kurulum betiği, eksikse [uv](https://docs.astral.sh/uv/) aracını (size sorduktan sonra) kurar.
 
 ```bash
 # 1. Clone
@@ -91,21 +91,25 @@ cd heliograph
 ./scripts/setup.ps1        # Windows (PowerShell)
 ./scripts/setup.sh         # macOS / Linux
 
-# 3. Open Claude Code in the folder
+# 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
+uv run heliograph login
+
+# 4. Open Claude Code in the folder
 claude
 ```
 
-Claude Code, Heliograph MCP sunucusunu `.mcp.json` üzerinden bulur ve ilk seferde onayınızı ister. Sonra sadece sorun, örneğin: *"Trading adlı kaydedilmiş koleksiyonumda ne var?"*
+Claude Code, Heliograph MCP sunucusunu `.mcp.json` üzerinden bulur ve ilk seferde onayınızı ister. Kurulum güvenle tekrar çalıştırılabilir; soruları atlamak için `--yes`, konuşma modelini (~500 MB) önceden indirmek için `--with-whisper` ekleyin. Bir sorun varsa `uv run heliograph doctor` çalıştırın.
 
-> [!IMPORTANT]
-> Kurulum betikleri, `.mcp.json` ve `heliograph login` **geliştiriliyor**. Hazır olana kadar ortamı elle kurabilirsiniz:
->
-> ```bash
-> uv sync
-> uv run heliograph doctor
-> ```
->
-> `doctor`; Instagram uygulamasını, Edge/Chrome'u, ffmpeg'i ve işletim sisteminizi kontrol eder ve neyin eksik olduğunu söyler.
+## Claude ile kullanım
+
+Proje klasöründe Claude ile konuşmanız yeterli. Örneğin:
+
+- *"'Trading strats' koleksiyonumdaki tüm stratejileri çıkar."* — `extract-trading-strategies` becerisini baştan sona çalıştırır.
+- *"DM'lerimde ve bildirimlerimde yeni ne var? Özetle, yanıt verme."*
+- *"Instagram uygulamasını aç, Reels'e git ve ekranda ne olduğunu söyle."*
+- *"@some_creator hesabının son beş gönderisini bul ve en yenisine bir yorum taslağı yaz."* — Claude önce size bir deneme gösterir; siz evet diyene kadar hiçbir şey paylaşılmaz.
+
+`CLAUDE.md`, Claude'a çalışma kılavuzunu (güvenlik kuralları, araç aileleri, sorun giderme) verir; [`instagram-control`](../../.claude/skills/instagram-control/SKILL.md) becerisi de hangi aracı kullanacağını öğretir.
 
 <a id="how-it-works"></a>
 ## Nasıl çalışır
@@ -145,10 +149,10 @@ Microsoft Store'daki Instagram uygulaması, normal Edge profilinizde çalışan 
 
 | Sürücü | Hedef | Güçlü yanı | Kullanım alanı |
 |---|---|---|---|
-| `uia` | Yüklü Store uygulamasının penceresi | Gerçek uygulamanız ve oturumunuz, giriş gerekmez | Gezinme, ekrandakini okuma, beğen / kaydet / takip et, ekran görüntüleri |
-| `cdp` | Uygulama penceresi olarak açılan özel bir Edge/Chrome profili, DevTools `127.0.0.1` adresine bağlı | Instagram web API'sinden yapılandırılmış JSON, video URL'leri, ağ yakalama | Kaydedilmiş koleksiyonlar, reels meta verileri, indirmeler, toplu çıkarma |
+| `uia` | Yüklü Store uygulamasının penceresi | Gerçek uygulamanız ve oturumunuz, giriş gerekmez | Gezinme, ekrandakini okuma, ekran görüntüleri, onaylı tıklamalar |
+| `cdp` | Uygulama penceresi olarak açılan özel bir Edge/Chrome profili, DevTools `127.0.0.1` adresine bağlı | Instagram web API'sinden yapılandırılmış JSON, video URL'leri, ağ yakalama | Kaydedilmiş koleksiyonlar, akışlar, DM'ler, reels meta verileri, indirmeler, toplu çıkarma |
 
-İkisi de örtüştükleri yerde tek bir `InstagramDriver` arayüzünü uygular. Tasarımın tamamı için [docs/ARCHITECTURE.md](../ARCHITECTURE.md) dosyasına bakın.
+Tasarımın tamamı için [docs/ARCHITECTURE.md](../ARCHITECTURE.md) dosyasına bakın.
 
 </details>
 
@@ -160,10 +164,64 @@ Microsoft Store'daki Instagram uygulaması, normal Edge profilinizde çalışan 
 
 | | Windows 10/11 | macOS | Linux |
 |---|---|---|---|
-| Derin sürücü (CDP) | Geliştiriliyor | Geliştiriliyor | Geliştiriliyor |
-| Medya hattı ve dosyalar | Geliştiriliyor | Geliştiriliyor | Geliştiriliyor |
+| Kurulum betiği | Doğrulandı | Kullanılabilir (test edilmedi) | Kullanılabilir (test edilmedi) |
+| Derin sürücü (CDP) ve MCP sunucusu | Doğrulandı | Kullanılabilir (test edilmedi) | Kullanılabilir (test edilmedi) |
+| Medya hattı ve dosyalar | Kullanılabilir | Kullanılabilir (test edilmedi) | Kullanılabilir (test edilmedi) |
 | Göz | Kullanılabilir | Kullanılabilir | Kullanılabilir |
-| Canlı uygulama sürücüsü | Geliştiriliyor (UI Automation) | Planlandı | Uygulanamaz |
+| Canlı uygulama sürücüsü (`app_*` araçları) | Doğrulandı | Planlandı | Uygulanamaz |
+
+</details>
+
+<a id="mcp-tools"></a>
+## MCP araçları
+
+Yedi ailede 41 araç. Listeleme araçları `limit` ve `cursor` alır; sonraki sayfa için `next_cursor` değerini geri verin.
+
+<details open>
+<summary><b>Araç başvurusu</b></summary>
+
+<br>
+
+| Aile | Araç | Ne yapar |
+|---|---|---|
+| **Durum** | `heliograph_status` | Sağlık: işletim sistemi, Store uygulaması, tarayıcılar, ffmpeg, oturum durumu |
+| | `heliograph_setup_check` | Tüm araçların çalışması için hâlâ yapmanız gerekenler |
+| **Okuma** | `ig_whoami` | Heliograph tarayıcı profilinde oturum açmış hesap |
+| | `ig_get_user` | Kullanıcı adına göre bir hesabın herkese açık profili |
+| | `ig_user_posts` | Bir hesabın son gönderileri ve reels'leri |
+| | `ig_get_media` | Bir gönderinin/reel'in tüm ayrıntıları, açıklama ve medya URL'leri dahil |
+| | `ig_comments` | Bir gönderideki/reel'deki üst düzey yorumlar |
+| | `ig_search` | Genel arama: kullanıcılar, hashtag'ler ve yerler |
+| | `ig_timeline` | Ana sayfa akışınız |
+| | `ig_reels_feed` | Reels keşif akışı |
+| | `ig_explore` | Keşfet ızgarasındaki gönderiler |
+| | `ig_inbox` | Son mesaj önizlemesiyle DM konuşmaları |
+| | `ig_thread` | Bir DM konuşmasının mesajları |
+| | `ig_activity` | Son bildirimler: beğeniler, takipler, yorumlar, bahsetmeler |
+| **Koleksiyonlar** | `ig_list_collections` | Kaydedilmiş koleksiyonlarınız |
+| | `ig_collection_posts` | Ad veya kimliğe göre bir koleksiyondaki gönderiler |
+| | `ig_saved_posts` | Tüm kaydedilmiş gönderiler, en yeniler önce |
+| **Çıkarma** | `ig_extract_media` | Bir gönderi/reel için dosya oluşturur (veya yeniden kullanır) |
+| | `ig_extract_collection` | Bir koleksiyon için gruplar hâlinde dosya oluşturur |
+| | `ig_read_dossier` | Bir dosyanın Markdown'ını, dökümünü ve meta verilerini okur |
+| | `ig_view_frames` | Kontak baskıyı veya kareleri Claude'un görebileceği görseller olarak döndürür |
+| **Canlı uygulama** *(Windows)* | `app_open` | Instagram uygulama penceresine bağlanır |
+| | `app_snapshot` | Ekrandakilerin metin taslağı (erişilebilirlik ağacı) |
+| | `app_screenshot` | Uygulama penceresinin ekran görüntüsü, arkada kalsa bile |
+| | `app_navigate` | Bir bölüm açar: ana sayfa, arama, keşfet, reels, mesajlar… |
+| | `app_click` | Ref veya ada göre bir öğeye tıklar (yazma işlemleri onayınızı gerektirir) |
+| | `app_scroll` | Ekran ekran kaydırır (Reels görüntüleyicide sayfa başına bir reel) |
+| | `app_type` | Bir alana yazar (gönderme onayınızı gerektirir) |
+| | `app_visible_posts` | Ekrandaki gönderiler/reels ve düğmeleri |
+| | `app_badges` | Mesajlar ve bildirimler için okunmamış sayıları |
+| **Yazma** *(onaylı)* | `ig_like` / `ig_unlike` | Bir gönderiyi/reel'i beğenir veya beğeniyi kaldırır |
+| | `ig_save` / `ig_unsave` | Kaydeder veya kaldırır, isteğe bağlı olarak bir koleksiyonda |
+| | `ig_follow` / `ig_unfollow` | Bir hesabı takip eder veya takibi bırakır |
+| | `ig_comment` | Onayladığınız metnin aynısıyla yorum paylaşır |
+| | `ig_send_dm` | Bir kullanıcıya veya mevcut bir konuşmaya DM gönderir |
+| **Göz** | `eye_report` | Sağlık özeti: hata oranı, yavaş ve başarısız işlemler |
+| | `eye_trace` | Bir araç çağrısının her adımı, hata izleri ve yapıtlarla |
+| | `eye_recent` | En son olaylar, isteğe bağlı olarak yalnızca hatalar |
 
 </details>
 
@@ -171,22 +229,24 @@ Microsoft Store'daki Instagram uygulaması, normal Edge profilinizde çalışan 
 
 Örnek bir iş akışı: Trading reels'lerini bir Instagram koleksiyonuna kaydedersiniz, Claude da bunları gerçekten üzerinde çalışabileceğiniz notlara dönüştürür.
 
-1. Claude'a şunu sorarsınız: *"Kaydedilmiş 'Trading' koleksiyonumdaki stratejileri çıkar."*
+1. Claude'a şunu sorarsınız: *"'Trading strats' koleksiyonumdaki tüm stratejileri çıkar."*
 2. Heliograph, koleksiyonu derin sürücü üzerinden listeler ve her reel'i Instagram CDN'inden indirir.
-3. Medya hattı, sahne değişimi anahtar karelerini (grafikler, kurulumlar, notlar) ve zaman damgalı bir döküm çıkarır.
-4. Her reel bir dosyaya dönüşür; Claude bunları okuyup giriş kurallarını, çıkışları, risk yönetimini ve doğrulayamadığı iddiaları yazar.
+3. Medya hattı, sahne değişimi anahtar karelerini (grafikler, kurulumlar, notlar), bir kontak baskıyı ve zaman damgalı bir dökümü çıkarır.
+4. Claude her dosyayı okur, `ig_view_frames` ile **karelere bakar** ve her reel için bir not yazar — giriş kuralları, çıkışlar, risk yönetimi, gösterge ayarları ve doğrulayamadığı iddialar — ayrıca bir dizin oluşturur.
 
 ```text
-dossiers/<reel-id>/
+~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
-├── video.mp4
-├── transcript.json    # timestamped segments
+├── caption.md
+├── video.mp4          # or images/NN.jpg for photo posts
+├── transcript.json    # timestamped segments + language
 ├── transcript.md
-├── frames/*.jpg       # de-duplicated keyframes
+├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
 
-**Durum:** dosya oluşturucu **geliştiriliyor**; `extract-trading-strategies` Claude Code becerisi **planlandı**.
+Notlar proje klasöründeki `strategies/` dizinine yazılır; kişisel veri olduğu için git tarafından yok sayılır. Dosyaları Claude olmadan da oluşturabilirsiniz: `uv run heliograph extract --collection "Trading strats"`.
 
 > [!CAUTION]
 > Heliograph içerik üreticilerinin söylediklerini düzenler; haklı olup olmadıklarını değerlendirmez. Ürettiği hiçbir şey yatırım tavsiyesi değildir.
@@ -198,35 +258,35 @@ dossiers/<reel-id>/
 - Her MCP araç çağrısı, sürücü eylemi, HTTP isteği ve ffmpeg/whisper alt süreci ortak bir `trace_id` ile bir **span** olarak kaydedilir; böylece Claude'dan gelen tek bir istek baştan sona izlenebilir.
 - Olaylar, sorgulama için bir SQLite dizini ile birlikte `~/.heliograph/eye/events.jsonl` dosyasına (döngüsel) yazılır.
 - **Gizli bilgiler yazılmadan önce maskelenir** — çerezler, `sessionid`, `csrftoken`, kimlik doğrulama başlıkları ve token'a benzeyen dizeler.
-- Bir arayüz veya tarayıcı adımı başarısız olduğunda, bir ekran görüntüsü ve erişilebilirlik/DOM anlık görüntüsü kaydedilip olaya bağlanır *(geliştiriliyor)*.
-- `heliograph eye`, kayan sağlık göstergeleriyle renkli, canlı bir akış gösterir: hata oranı, p95 gecikmesi, en çok başarısız olan işlemler.
-- `heliograph eye report` — ve MCP aracı `eye_report` *(geliştiriliyor)* — son hataları özetler; böylece Claude sorunları kendisi teşhis edebilir.
+- Bir arayüz veya tarayıcı adımı başarısız olduğunda, bir ekran görüntüsü ve erişilebilirlik/DOM anlık görüntüsü kaydedilip olaya bağlanır.
+- Her araç hatası bir **ipucu** ve bir **iz kimliği** döndürür; Claude bununla `eye_trace` çağırıp tam olarak neyin ters gittiğini görebilir.
+- `heliograph eye`, kayan sağlık göstergeleriyle renkli, canlı bir akış gösterir: hata oranı, p95 gecikmesi, en çok başarısız olan işlemler. `heliograph eye report` son hataları özetler.
 - `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` tanımlıysa isteğe bağlı olarak Langfuse'a aktarım (varsayılan olarak kapalı).
 
 ## Güvenlik ve gizlilik
 
-- **Tek seferlik elle giriş.** Özel tarayıcı profiline bir kez, kendiniz giriş yaparsınız. Heliograph hiçbir zaman parola yazmaz, saklamaz veya kaydetmez.
+- **Tek seferlik elle giriş.** Özel tarayıcı profiline bir kez, kendiniz giriş yaparsınız (`heliograph login`). Heliograph hiçbir zaman parola yazmaz, saklamaz veya kaydetmez.
 - **Canlı uygulama sürücüsü giriş gerektirmez** — zaten oturum açmış olduğunuz Instagram uygulamasını kullanır.
-- **Yazma işlemleri onay gerektirir.** Beğenme, takip etme, yorum yapma, DM gönderme, paylaşma ve kaydedilenlerden çıkarma, MCP katmanında açık bir `confirm=True` gerektirir; yani Claude önce size sormak zorundadır.
+- **Yazma işlemleri varsayılan olarak denemedir.** Beğenme, takip, yorum, DM, kaydetme ve bunların tersleri yalnızca ne *olacağını* açıklar; sohbette evet dedikten sonra `confirm=true` ile yeniden çağrıldıklarında gerçekleşir. Aynısı canlı uygulamada eylem düğmelerine tıklamak veya metin göndermek için de geçerlidir.
 - **Rastgele sapmalı hız sınırları** hem yazmalarda *hem de* okumalarda uygulanır; kullanım insan temposunda kalır.
-- **Yalnızca yerel veri.** Dosyalar, günlükler ve tarayıcı profili bilgisayarınızda `~/.heliograph` altında kalır. DevTools bağlantı noktası rastgele boş bir portta `127.0.0.1` adresine bağlanır.
-- **İzin listeli indirmeler** — yalnızca Instagram CDN sunucularından HTTPS ile.
+- **Yalnızca yerel veri.** Dosyalar, günlükler ve tarayıcı profili bilgisayarınızda `~/.heliograph` altında, özel dosya izinleriyle kalır. DevTools bağlantı noktası rastgele boş bir portta `127.0.0.1` adresine bağlanır.
+- **Sıkı izin listeleri** — yalnızca Instagram URL'leri kabul edilir ve indirmeler yalnızca Instagram CDN sunucularından HTTPS ile gelir. Dizin geçişi (path traversal) korumaları API istemcisini ve dosya klasörlerini kapsar.
 
 Tehdit modeli ve güvenlik açığı bildirme yolu için [docs/SECURITY.md](../SECURITY.md) dosyasına bakın.
 
 ## CLI başvurusu
 
-> Bu **planlanan arayüzdür**. Durum sütunu bugün neyin çalıştığını gösterir.
-
 | Komut | Ne yapar | Durum |
 |---|---|---|
-| `heliograph setup` | Bağımlılıkları kurar, ortamı denetler ve MCP sunucusunu kaydeder | Planlandı (iskelet) |
-| `heliograph doctor` | Instagram uygulamasını, Edge/Chrome'u, ffmpeg'i, işletim sistemini ve oturum durumunu algılar | Kullanılabilir |
-| `heliograph login` | Bir kez elle giriş yapmanız için özel tarayıcı profilini açar | Planlandı (iskelet) |
-| `heliograph mcp` | MCP sunucusunu stdio üzerinden çalıştırır (Claude Code bunu sizin için başlatır) | Planlandı (iskelet) |
-| `heliograph extract <url>` | Tek bir reel veya gönderi için dosya oluşturur | Planlandı (iskelet) |
+| `heliograph setup` | Ortamı denetler, çözümler önerir (Chromium, Store uygulaması), isteğe bağlı Whisper'ı önceden indirir, sonraki adımları gösterir | Kullanılabilir |
+| `heliograph doctor` | Instagram uygulamasını, Edge/Chrome'u, ffmpeg'i, işletim sistemini ve oturum durumunu algılar (ham çıktı için `--json`) | Kullanılabilir |
+| `heliograph login` | Bir kez elle giriş yapmanız için özel tarayıcı profilini açar | Kullanılabilir |
+| `heliograph mcp` | MCP sunucusunu stdio üzerinden çalıştırır (Claude Code bunu sizin için başlatır) | Kullanılabilir |
+| `heliograph extract <url>` | Bir reel/gönderi için dosya oluşturur ya da `--collection "<ad>"` ile tüm koleksiyon için | Kullanılabilir |
 | `heliograph eye` | Göz'ün sağlık göstergeli canlı akışı | Kullanılabilir |
 | `heliograph eye report` | Son hataların ve anormalliklerin özeti | Kullanılabilir |
+
+Çoğu komut, ayrı bir tarayıcı profili kullanmak için `--account <anahtar>` kabul eder.
 
 <details>
 <summary><b>Proje yapısı</b></summary>
@@ -235,34 +295,38 @@ Tehdit modeli ve güvenlik açığı bildirme yolu için [docs/SECURITY.md](../S
 
 ```text
 src/heliograph/
-├── cli.py              # Typer CLI
+├── cli.py              # Typer CLI entry point
+├── commands/           # setup, doctor, login, extract
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
-│   └── cdp/            # browser launcher, CDP session, web-API client
-├── instagram/          # models + high-level service
+│   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
+├── instagram/          # models, service, collections, write actions
 ├── media/              # allow-listed download, ffmpeg frames, faster-whisper
 ├── extract/            # reel -> dossier
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
-└── mcp/                # FastMCP server (in progress)
+└── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
-scripts/                # setup.ps1 / setup.sh (in progress)
-.claude/skills/         # Claude Code skills (planned)
-.mcp.json               # MCP registration for Claude Code (in progress)
+scripts/                # setup.ps1 / setup.sh
+.claude/skills/         # extract-trading-strategies, instagram-control
+.mcp.json               # registers the MCP server with Claude Code
+CLAUDE.md               # operating manual for Claude
 ```
 
 </details>
 
 ## Yol haritası
 
-- [ ] Tek komutla kurulum, `.mcp.json` kaydı ve `heliograph login`
-- [ ] Önce okuma araçları, ardından onaylı yazma araçları olan MCP sunucusu
-- [ ] `extract-trading-strategies` becerisi
-- [ ] **Çoklu hesap** desteği (her hesap için ayrı profil ve durum)
+- [x] Tek komutla kurulum, `.mcp.json` kaydı ve `heliograph login`
+- [x] Okuma, koleksiyon, çıkarma, canlı uygulama, yazma ve Göz araçlarıyla MCP sunucusu
+- [x] `extract-trading-strategies` ve `instagram-control` becerileri
+- [ ] Her yazma işleminin canlı doğrulanması
+- [ ] Windows, macOS ve Linux'ta CI
+- [ ] Claude oturumlarında **çoklu hesap** desteği (ayrı profiller `--account` ile zaten çalışıyor)
 - [ ] `adb` ile **Android**
 - [ ] **macOS** canlı uygulama sürücüsü (Erişilebilirlik API'si)
 

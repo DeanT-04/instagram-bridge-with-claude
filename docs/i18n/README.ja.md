@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="../assets/banner.svg" alt="Heliograph — Claude と Instagram をつなぐ信号" width="100%">
+  <img src="../assets/banner.png" alt="Heliograph — Claude と Instagram をつなぐ信号" width="100%">
 </p>
 
 <p align="center">
   <a href="#quick-start"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-E0A526?style=flat-square&labelColor=0B1026&logo=python&logoColor=F4EBD9"></a>
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
-  <a href="#how-it-works"><img alt="MCP server" src="https://img.shields.io/badge/MCP-server-F4EBD9?style=flat-square&labelColor=0B1026"></a>
+  <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
   <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
 </p>
 
@@ -35,13 +35,13 @@
 > **なぜ「Heliograph」？** 世界最初の写真は*ヘリオグラフ*（ニエプス、1820 年代）でした。ヘリオグラフは、鏡で太陽光を遠くへ点滅させて合図を送る信号機の名前でもあります。カメラであり、橋でもある——それがまさにこのプロジェクトです。
 
 > [!NOTE]
-> **ステータス：初期開発（v0.1.0）。** アーキテクチャは固まり、コアモジュールを構築中です。以下の各機能には **利用可能**・**開発中**・**予定** のいずれかを明記しています。まだコードになっていないものを約束することはしません。
+> **ステータス：v0.1.0——初期段階ですが動作します。** セットアップ、CLI、MCP サーバー（41 ツール）、2 つのドライバー、ドシエ生成パイプラインをリリース済みです。読み取り操作は Windows 11 上の実アカウントでライブ検証済みです（ログイン中のアカウント、コレクション一覧、コレクション内の投稿、検索、アプリのバッジ、ステータス）。**書き込み操作**（いいね、保存、フォロー、コメント、DM など）は実装済みでドライラン（模擬実行）テストも通っていますが、**実アカウントでの検証はまだです**。
 
 ## できること
 
 - **Claude があなたと同じように Instagram を見て操作できる**——実際にインストールされたアプリで、あなたの本当のセッションのまま。
-- **構造化データを取得する**（保存済みコレクション、リールのメタデータ、キャプション、メディア）。一度だけログインする、独立した専用ブラウザプロファイルを使います。
-- **リールをドシエに変換する**——動画、キーフレーム、タイムスタンプ付きの文字起こし、メタデータを 1 つのフォルダにまとめ、Claude が読んで分析できるようにします。
+- **構造化データを取得する**（保存済みコレクション、リールのメタデータ、キャプション、DM、メディア）。一度だけログインする専用ブラウザプロファイルを使います。
+- **リールをドシエに変換する**——動画、キーフレーム、コンタクトシート、タイムスタンプ付きの文字起こし、メタデータを 1 つのフォルダにまとめ、Claude が読んで*見る*ことができます。
 - **自分自身を監視する**——*The Eye* がすべてのツール呼び出し、ドライバー操作、サブプロセスをローカルに記録するので、失敗の原因をあなたや Claude が説明できます。
 
 ## 機能
@@ -50,29 +50,29 @@
   <tr>
     <td width="33%" valign="top">
       <h3>ライブアプリ・ドライバー</h3>
-      Microsoft Store 版 Instagram アプリを Windows UI Automation で操作します。画面の読み取り、移動、いいね、保存、フォロー、スクリーンショット。ログイン手順は一切不要です。<br><br><sub><b>開発中</b></sub>
+      Microsoft Store 版 Instagram アプリを Windows UI Automation で操作します。画面の読み取り、移動、スクロール、スクリーンショット、クリックや入力（あなたの確認つき）。ログイン手順は一切不要です。<br><br><sub><b>利用可能 · Windows</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>ディープ・ドライバー</h3>
-      Chrome DevTools Protocol で専用の Edge/Chrome プロファイルを操作し、ページ内から Instagram 自身の Web API を読み取ります。きれいな JSON、動画 URL、一括処理に対応。<br><br><sub><b>開発中</b></sub>
+      Chrome DevTools Protocol で専用の Edge/Chrome プロファイルを操作し、ページ内から Instagram 自身の Web API を読み取ります。きれいな JSON、動画 URL、一括処理に対応。<br><br><sub><b>利用可能</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>リール・ドシエ</h3>
-      ffmpeg によるシーン切り替えキーフレーム（知覚ハッシュで重複除去）と faster-whisper の文字起こしを、リールごとに 1 つの Markdown ドシエにまとめます。<br><br><sub><b>開発中</b></sub>
+      ffmpeg によるシーン切り替えキーフレーム（知覚ハッシュで重複除去）、コンタクトシート、faster-whisper の文字起こしを、リールごとに 1 つの Markdown ドシエにまとめます。<br><br><sub><b>利用可能</b></sub>
     </td>
   </tr>
   <tr>
     <td width="33%" valign="top">
       <h3>MCP サーバー</h3>
-      フォルダを開くと <code>.mcp.json</code> 経由で Claude Code に自動登録される FastMCP サーバー。<br><br><sub><b>開発中</b></sub>
+      フォルダを開くと <code>.mcp.json</code> 経由で Claude Code に自動登録される 41 のツールと、2 つのプロジェクトスキル。<br><br><sub><b>利用可能</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>The Eye</h3>
-      ローカルファーストのトレーシング：スパン、トレース ID、秘密情報のマスキング、失敗時スナップショット、ターミナルのライブ表示、そして Claude が読めるレポート。<br><br><sub><b>利用可能（初期）</b></sub>
+      ローカルファーストのトレーシング：スパン、トレース ID、秘密情報のマスキング、失敗時のスクリーンショットと DOM スナップショット、ターミナルのライブ表示、Claude が読めるレポート。<br><br><sub><b>利用可能</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>安全装置</h3>
-      書き込み操作には明示的な確認が必要。すべてにレート制限があり、ダウンロードは Instagram の CDN に限定。パスワードが Heliograph を通ることはありません。<br><br><sub><b>開発中</b></sub>
+      書き込み操作は確認がなければドライランのみ。すべてにレート制限があり、URL とダウンロードは許可リスト方式、パスワードが Heliograph を通ることはありません。<br><br><sub><b>利用可能 · 書き込みはライブ未検証</b></sub>
     </td>
   </tr>
 </table>
@@ -80,7 +80,7 @@
 <a id="quick-start"></a>
 ## クイックスタート
 
-**必要なもの：** Python 3.11 以上（3.12 推奨）、[uv](https://docs.astral.sh/uv/)、[ffmpeg](https://ffmpeg.org/)、Microsoft Edge または Google Chrome、[Claude Code](https://docs.anthropic.com/en/docs/claude-code)。Windows でライブアプリ・ドライバーを使う場合は Microsoft Store 版 Instagram アプリも必要です。
+**必要なもの：** Python 3.11 以上（3.12 推奨）、[ffmpeg](https://ffmpeg.org/)、Microsoft Edge または Google Chrome、[Claude Code](https://docs.anthropic.com/en/docs/claude-code)。Windows でライブアプリ・ドライバーを使う場合は Microsoft Store 版 Instagram アプリも必要です。[uv](https://docs.astral.sh/uv/) がなければ、セットアップスクリプトが確認のうえインストールします。
 
 ```bash
 # 1. Clone
@@ -91,21 +91,25 @@ cd heliograph
 ./scripts/setup.ps1        # Windows (PowerShell)
 ./scripts/setup.sh         # macOS / Linux
 
-# 3. Open Claude Code in the folder
+# 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
+uv run heliograph login
+
+# 4. Open Claude Code in the folder
 claude
 ```
 
-Claude Code は `.mcp.json` から Heliograph MCP サーバーを検出し、初回に承認を求めます。あとは話しかけるだけです。例：*「Trading という保存済みコレクションには何が入ってる？」*
+Claude Code は `.mcp.json` から Heliograph MCP サーバーを検出し、初回に承認を求めます。セットアップは何度実行しても安全です。質問を省くには `--yes`、音声モデル（約 500 MB）を事前にダウンロードするには `--with-whisper` を付けます。おかしいと感じたら `uv run heliograph doctor` を実行してください。
 
-> [!IMPORTANT]
-> セットアップスクリプト、`.mcp.json`、`heliograph login` は**開発中**です。それまでは手動で準備できます：
->
-> ```bash
-> uv sync
-> uv run heliograph doctor
-> ```
->
-> `doctor` は Instagram アプリ、Edge/Chrome、ffmpeg、OS をチェックし、足りないものを教えてくれます。
+## Claude と使う
+
+プロジェクトフォルダで Claude に話しかけるだけです。例：
+
+- *「保存済みコレクション『Trading strats』から戦略をすべて抽出して。」*——`extract-trading-strategies` スキルを最初から最後まで実行します。
+- *「DM と通知に何か新しいことはある？要約だけして、返信はしないで。」*
+- *「Instagram アプリを開いてリールに移動し、画面に何が映っているか教えて。」*
+- *「@some_creator の最新 5 件の投稿を探して、いちばん新しい投稿へのコメント案を書いて。」*——Claude はまずドライランの結果を見せます。あなたが承認するまで何も投稿されません。
+
+`CLAUDE.md` は Claude の運用マニュアル（安全ルール、ツールの分類、トラブルシューティング）で、[`instagram-control`](../../.claude/skills/instagram-control/SKILL.md) スキルがどのツールを使うべきかを教えます。
 
 <a id="how-it-works"></a>
 ## 仕組み
@@ -145,10 +149,10 @@ Microsoft Store 版 Instagram アプリは、普段使いの Edge プロファ�
 
 | ドライバー | 対象 | 強み | 用途 |
 |---|---|---|---|
-| `uia` | インストール済み Store アプリのウィンドウ | 本物のアプリとセッション、ログイン不要 | 移動、画面内容の読み取り、いいね / 保存 / フォロー、スクリーンショット |
-| `cdp` | アプリウィンドウとして起動する専用 Edge/Chrome プロファイル（DevTools は `127.0.0.1` にバインド） | Instagram Web API からの構造化 JSON、動画 URL、ネットワークキャプチャ | 保存済みコレクション、リールのメタデータ、ダウンロード、一括抽出 |
+| `uia` | インストール済み Store アプリのウィンドウ | 本物のアプリとセッション、ログイン不要 | 移動、画面内容の読み取り、スクリーンショット、確認済みのクリック |
+| `cdp` | アプリウィンドウとして起動する専用 Edge/Chrome プロファイル（DevTools は `127.0.0.1` にバインド） | Instagram Web API からの構造化 JSON、動画 URL、ネットワークキャプチャ | 保存済みコレクション、フィード、DM、リールのメタデータ、ダウンロード、一括抽出 |
 
-機能が重なる部分では、両者とも共通の `InstagramDriver` インターフェースを実装しています。設計の詳細は [docs/ARCHITECTURE.md](../ARCHITECTURE.md) を参照してください。
+設計の詳細は [docs/ARCHITECTURE.md](../ARCHITECTURE.md) を参照してください。
 
 </details>
 
@@ -160,10 +164,64 @@ Microsoft Store 版 Instagram アプリは、普段使いの Edge プロファ�
 
 | | Windows 10/11 | macOS | Linux |
 |---|---|---|---|
-| ディープ・ドライバー（CDP） | 開発中 | 開発中 | 開発中 |
-| メディアパイプラインとドシエ | 開発中 | 開発中 | 開発中 |
+| セットアップスクリプト | 検証済み | 利用可能（未テスト） | 利用可能（未テスト） |
+| ディープ・ドライバー（CDP）と MCP サーバー | 検証済み | 利用可能（未テスト） | 利用可能（未テスト） |
+| メディアパイプラインとドシエ | 利用可能 | 利用可能（未テスト） | 利用可能（未テスト） |
 | The Eye | 利用可能 | 利用可能 | 利用可能 |
-| ライブアプリ・ドライバー | 開発中（UI Automation） | 予定 | 対象外 |
+| ライブアプリ・ドライバー（`app_*` ツール） | 検証済み | 予定 | 対象外 |
+
+</details>
+
+<a id="mcp-tools"></a>
+## MCP ツール
+
+7 つのカテゴリに 41 のツールがあります。一覧系ツールは `limit` と `cursor` を受け取ります。次のページは返された `next_cursor` を渡して取得します。
+
+<details open>
+<summary><b>ツールリファレンス</b></summary>
+
+<br>
+
+| カテゴリ | ツール | 内容 |
+|---|---|---|
+| **ステータス** | `heliograph_status` | 状態：OS、Store アプリ、ブラウザー、ffmpeg、ログイン状態 |
+| | `heliograph_setup_check` | すべてのツールを使えるようにするため、残っている作業 |
+| **読み取り** | `ig_whoami` | Heliograph のブラウザープロファイルにログイン中のアカウント |
+| | `ig_get_user` | ユーザー名からアカウントの公開プロフィールを取得 |
+| | `ig_user_posts` | アカウントの最近の投稿とリール |
+| | `ig_get_media` | 投稿/リールの詳細（キャプションとメディア URL を含む） |
+| | `ig_comments` | 投稿/リールのトップレベルのコメント |
+| | `ig_search` | 検索：ユーザー、ハッシュタグ、場所 |
+| | `ig_timeline` | ホームフィード |
+| | `ig_reels_feed` | リールの発見フィード |
+| | `ig_explore` | 発見タブのグリッドの投稿 |
+| | `ig_inbox` | 最新メッセージのプレビュー付き DM スレッド |
+| | `ig_thread` | 1 つの DM スレッドのメッセージ |
+| | `ig_activity` | 最近の通知：いいね、フォロー、コメント、メンション |
+| **コレクション** | `ig_list_collections` | 保存済みコレクションの一覧 |
+| | `ig_collection_posts` | 名前または ID で指定したコレクションの投稿 |
+| | `ig_saved_posts` | 保存済みの全投稿（新しい順） |
+| **抽出** | `ig_extract_media` | 投稿/リールのドシエを作成（または再利用） |
+| | `ig_extract_collection` | コレクションのドシエをバッチで作成 |
+| | `ig_read_dossier` | ドシエの Markdown、文字起こし、メタデータを読む |
+| | `ig_view_frames` | コンタクトシートやキーフレームを Claude が見られる画像として返す |
+| **ライブアプリ** *（Windows）* | `app_open` | Instagram アプリのウィンドウに接続 |
+| | `app_snapshot` | 画面内容のテキスト構造（アクセシビリティツリー） |
+| | `app_screenshot` | アプリウィンドウのスクリーンショット（他のウィンドウの背後でも可） |
+| | `app_navigate` | セクションを開く：ホーム、検索、発見、リール、メッセージ… |
+| | `app_click` | ref または名前で要素をクリック（書き込みには確認が必要） |
+| | `app_scroll` | 画面単位でスクロール（リールビューアーでは 1 ページ 1 リール） |
+| | `app_type` | 入力欄に文字を入力（送信には確認が必要） |
+| | `app_visible_posts` | 画面に表示中の投稿/リールとそのボタン |
+| | `app_badges` | メッセージと通知の未読数 |
+| **書き込み** *（確認制）* | `ig_like` / `ig_unlike` | 投稿/リールにいいね、または取り消し |
+| | `ig_save` / `ig_unsave` | 保存または保存解除（コレクション指定も可） |
+| | `ig_follow` / `ig_unfollow` | アカウントをフォロー、またはフォロー解除 |
+| | `ig_comment` | あなたが承認した文面そのままでコメントを投稿 |
+| | `ig_send_dm` | ユーザーまたは既存スレッドに DM を送信 |
+| **Eye** | `eye_report` | 健全性の要約：エラー率、遅い操作・失敗した操作 |
+| | `eye_trace` | 1 回のツール呼び出しの全ステップ（トレースバックと成果物つき） |
+| | `eye_recent` | 最新のイベント（エラーのみに絞り込みも可） |
 
 </details>
 
@@ -171,22 +229,24 @@ Microsoft Store 版 Instagram アプリは、普段使いの Edge プロファ�
 
 ショーケースとなるワークフロー：トレード関連のリールを Instagram のコレクションに保存しておくと、Claude がそれを本当に学べるノートにまとめます。
 
-1. Claude に頼みます：*「保存済みコレクション『Trading』から戦略を抽出して。」*
+1. Claude に頼みます：*「保存済みコレクション『Trading strats』から戦略をすべて抽出して。」*
 2. Heliograph がディープ・ドライバーでコレクションを一覧し、各リールを Instagram の CDN からダウンロードします。
-3. メディアパイプラインがシーン切り替えのキーフレーム（チャート、セットアップ、注釈）とタイムスタンプ付き文字起こしを取り出します。
-4. 各リールがドシエになり、Claude がそれを読んでエントリールール、エグジット、リスク管理、そして検証できなかった主張を書き出します。
+3. メディアパイプラインがシーン切り替えのキーフレーム（チャート、セットアップ、注釈）、コンタクトシート、タイムスタンプ付き文字起こしを取り出します。
+4. Claude は各ドシエを読み、`ig_view_frames` で**フレームを実際に見て**、リールごとにノートを書きます——エントリールール、エグジット、リスク管理、インジケーター設定、そして検証できなかった主張——さらに索引も作ります。
 
 ```text
-dossiers/<reel-id>/
+~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
-├── video.mp4
-├── transcript.json    # timestamped segments
+├── caption.md
+├── video.mp4          # or images/NN.jpg for photo posts
+├── transcript.json    # timestamped segments + language
 ├── transcript.md
-├── frames/*.jpg       # de-duplicated keyframes
+├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
 
-**ステータス：** ドシエ生成は**開発中**、Claude Code スキル `extract-trading-strategies` は**予定**です。
+ノートはプロジェクトフォルダ内の `strategies/` に書き出されます。個人データのため git の管理対象外です。Claude を使わずにドシエだけ作ることもできます：`uv run heliograph extract --collection "Trading strats"`。
 
 > [!CAUTION]
 > Heliograph はクリエイターの発言を整理するだけで、その正しさを判断しません。生成されるものはいずれも投資助言ではありません。
@@ -198,35 +258,35 @@ dossiers/<reel-id>/
 - MCP ツール呼び出し、ドライバー操作、HTTP リクエスト、ffmpeg/whisper サブプロセスはすべて、共通の `trace_id` を持つ**スパン**として記録されます。Claude からの 1 つのリクエストを最初から最後まで追跡できます。
 - イベントは `~/.heliograph/eye/events.jsonl`（ローテーションあり）に書き込まれ、検索用の SQLite インデックスも作られます。
 - **書き込み前に秘密情報をマスク**——Cookie、`sessionid`、`csrftoken`、認証ヘッダー、トークンらしき文字列。
-- UI やブラウザの手順が失敗すると、スクリーンショットとアクセシビリティ/DOM スナップショットを保存し、イベントにリンクします*（開発中）*。
-- `heliograph eye` は色分けされたライブ表示と、エラー率・p95 レイテンシ・失敗の多い操作といった直近の健全性を表示します。
-- `heliograph eye report`——および MCP ツール `eye_report`*（開発中）*——が最近のエラーを要約するので、Claude が自分で問題を診断できます。
+- UI やブラウザの手順が失敗すると、スクリーンショットとアクセシビリティ/DOM スナップショットを保存し、イベントにリンクします。
+- ツールのエラーには必ず**ヒント**と**トレース ID** が付きます。Claude はそれで `eye_trace` を呼び、何が起きたかを正確に確認できます。
+- `heliograph eye` は色分けされたライブ表示と、エラー率・p95 レイテンシ・失敗の多い操作といった直近の健全性を表示します。`heliograph eye report` は最近のエラーを要約します。
 - `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` を設定すると Langfuse へのエクスポートも可能です（デフォルトはオフ）。
 
 ## セキュリティとプライバシー
 
-- **ログインは手動で 1 回だけ。** 専用ブラウザプロファイルへのサインインはあなた自身が一度だけ行います。Heliograph がパスワードを入力・保存・記録することは一切ありません。
+- **ログインは手動で 1 回だけ。** 専用ブラウザプロファイルへのサインインはあなた自身が一度だけ行います（`heliograph login`）。Heliograph がパスワードを入力・保存・記録することは一切ありません。
 - **ライブアプリ・ドライバーはログイン不要**——すでにサインイン済みの Instagram アプリを使います。
-- **書き込み操作には確認が必要。** いいね、フォロー、コメント、DM、投稿、保存解除には、MCP 層で明示的な `confirm=True` が必要です。つまり Claude はまずあなたに確認しなければなりません。
+- **書き込み操作はデフォルトでドライラン。** いいね、フォロー、コメント、DM、保存とそれらの取り消しは、何が*起きるか*の説明を返すだけです。チャットであなたが承認した後に `confirm=true` で再度呼ばれたときだけ実行されます。ライブアプリでのアクションボタンのクリックやテキスト送信も同様です。
 - **ジッター付きレート制限**を書き込み*と*読み取りの両方に適用し、人間らしいペースを保ちます。
-- **データはローカルのみ。** ドシエ、ログ、ブラウザプロファイルはあなたのマシンの `~/.heliograph` に保存されます。DevTools ポートは `127.0.0.1` のランダムな空きポートにバインドされます。
-- **許可リスト方式のダウンロード**——Instagram の CDN ホストから HTTPS でのみ取得します。
+- **データはローカルのみ。** ドシエ、ログ、ブラウザプロファイルはあなたのマシンの `~/.heliograph` に、非公開のファイル権限で保存されます。DevTools ポートは `127.0.0.1` のランダムな空きポートにバインドされます。
+- **厳格な許可リスト**——受け付ける URL は Instagram のものだけで、ダウンロードは Instagram の CDN ホストから HTTPS でのみ行います。パストラバーサル対策が API クライアントとドシエのフォルダを守ります。
 
 脅威モデルと脆弱性の報告方法は [docs/SECURITY.md](../SECURITY.md) を参照してください。
 
 ## CLI リファレンス
 
-> これは**予定しているインターフェース**です。「ステータス」列は現時点で動くものを示します。
-
 | コマンド | 内容 | ステータス |
 |---|---|---|
-| `heliograph setup` | 依存関係のインストール、環境チェック、MCP サーバーの登録 | 予定（スタブ） |
-| `heliograph doctor` | Instagram アプリ、Edge/Chrome、ffmpeg、OS、ログイン状態を検出 | 利用可能 |
-| `heliograph login` | 専用ブラウザプロファイルを開き、手動で一度だけサインイン | 予定（スタブ） |
-| `heliograph mcp` | stdio で MCP サーバーを起動（Claude Code が自動で起動します） | 予定（スタブ） |
-| `heliograph extract <url>` | 1 つのリールまたは投稿のドシエを作成 | 予定（スタブ） |
+| `heliograph setup` | 環境をチェックし、対処（Chromium、Store アプリ）を提案、必要に応じて Whisper を事前ダウンロードし、次の手順を表示 | 利用可能 |
+| `heliograph doctor` | Instagram アプリ、Edge/Chrome、ffmpeg、OS、ログイン状態を検出（生データは `--json`） | 利用可能 |
+| `heliograph login` | 専用ブラウザプロファイルを開き、手動で一度だけサインイン | 利用可能 |
+| `heliograph mcp` | stdio で MCP サーバーを起動（Claude Code が自動で起動します） | 利用可能 |
+| `heliograph extract <url>` | リール/投稿 1 件のドシエを作成。`--collection "<名前>"` でコレクション全体 | 利用可能 |
 | `heliograph eye` | The Eye のライブ表示と健全性 | 利用可能 |
 | `heliograph eye report` | 最近のエラーと異常の要約 | 利用可能 |
+
+ほとんどのコマンドは `--account <キー>` で別のブラウザープロファイルを使えます。
 
 <details>
 <summary><b>プロジェクト構成</b></summary>
@@ -235,34 +295,38 @@ dossiers/<reel-id>/
 
 ```text
 src/heliograph/
-├── cli.py              # Typer CLI
+├── cli.py              # Typer CLI entry point
+├── commands/           # setup, doctor, login, extract
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
-│   └── cdp/            # browser launcher, CDP session, web-API client
-├── instagram/          # models + high-level service
+│   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
+├── instagram/          # models, service, collections, write actions
 ├── media/              # allow-listed download, ffmpeg frames, faster-whisper
 ├── extract/            # reel -> dossier
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
-└── mcp/                # FastMCP server (in progress)
+└── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
-scripts/                # setup.ps1 / setup.sh (in progress)
-.claude/skills/         # Claude Code skills (planned)
-.mcp.json               # MCP registration for Claude Code (in progress)
+scripts/                # setup.ps1 / setup.sh
+.claude/skills/         # extract-trading-strategies, instagram-control
+.mcp.json               # registers the MCP server with Claude Code
+CLAUDE.md               # operating manual for Claude
 ```
 
 </details>
 
 ## ロードマップ
 
-- [ ] ワンコマンドセットアップ、`.mcp.json` による登録、`heliograph login`
-- [ ] 読み取りツールを備えた MCP サーバー、続いて確認付きの書き込みツール
-- [ ] `extract-trading-strategies` スキル
-- [ ] **マルチアカウント**対応（アカウントごとに独立したプロファイルと状態）
+- [x] ワンコマンドセットアップ、`.mcp.json` による登録、`heliograph login`
+- [x] 読み取り・コレクション・抽出・ライブアプリ・書き込み・Eye のツールを備えた MCP サーバー
+- [x] `extract-trading-strategies` と `instagram-control` スキル
+- [ ] すべての書き込み操作のライブ検証
+- [ ] Windows、macOS、Linux での CI
+- [ ] Claude セッションでの**マルチアカウント**対応（別プロファイルは `--account` で既に利用可能）
 - [ ] `adb` による **Android** 対応
 - [ ] **macOS** 向けライブアプリ・ドライバー（アクセシビリティ API）
 

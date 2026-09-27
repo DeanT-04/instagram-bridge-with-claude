@@ -2,7 +2,7 @@
 
 Heliograph drives a real, logged-in Instagram session on your own machine and hands that capability to an AI agent. That deserves a clear threat model. This page summarises it; [ARCHITECTURE.md](ARCHITECTURE.md) has the implementation detail.
 
-> Heliograph is in early development (v0.1.0). Controls marked *(in progress)* are designed and specified but not yet fully enforced in code.
+> Heliograph is v0.1.0. The controls below are implemented and covered by unit tests (security milestones 1 and 2). Write actions are dry-run tested but have **not yet been verified against a live account**.
 
 ## What we protect
 
@@ -20,10 +20,13 @@ Heliograph drives a real, logged-in Instagram session on your own machine and ha
 | **Credential theft or leakage** | Heliograph never types, stores or logs a password. You log in to the dedicated profile once, by hand. The live-app driver reuses the app you are already signed into. |
 | **Session tokens leaking into logs** | The Eye redacts cookies, `sessionid`, `csrftoken`, auth headers and token-like strings *before* anything is written to disk or exported. |
 | **Another local process or website hijacking the browser** | The DevTools port is bound to `127.0.0.1` only, on a random free port recorded in `~/.heliograph/state.json`. It is never exposed on a network interface. |
-| **An agent taking unwanted actions** (like, follow, comment, DM, post, unsave) | Every write action requires an explicit `confirm=True` at the MCP layer, so Claude must ask you first *(in progress)*. Claude Code's own tool-permission prompts add a second gate. |
+| **An agent taking unwanted actions** (like, follow, comment, DM, post, unsave) | Every write tool (`ig_like`, `ig_follow`, `ig_comment`, `ig_send_dm`, ...) returns a dry run describing what *would* happen unless called with `confirm=true`, and Claude is instructed (`CLAUDE.md`) to show you that dry run and wait for your explicit yes. In the live app, `app_click` on action controls and `app_type` with `submit=true` are gated the same way, with control names normalised so look-alike labels can't slip past. Claude Code's own tool-permission prompts add a second gate. |
 | **Prompt injection from Instagram content** (captions, comments, DMs, transcripts telling the agent to do something) | Content read from Instagram is data, not instructions. Write actions still need confirmation, and nothing Heliograph reads can grant that confirmation. Review what Claude proposes before approving. |
-| **Account restrictions from automated-looking behaviour** | Reads and writes are rate-limited with jitter to stay human-paced *(in progress)*. Use Heliograph on your own account only, and not for bulk actions on other people. |
-| **Malicious downloads / SSRF** | Media downloads are HTTPS-only and restricted to an allow-list of Instagram CDN hosts (`cdninstagram.com`, `fbcdn.net`). Writes are atomic. |
+| **Account restrictions from automated-looking behaviour** | Reads and writes are rate-limited with jitter to stay human-paced. Use Heliograph on your own account only, and not for bulk actions on other people. |
+| **Malicious URLs, downloads / SSRF** | Only Instagram URLs are accepted as input (strict allow-list). Media downloads are HTTPS-only and restricted to Instagram CDN hosts (`cdninstagram.com`, `fbcdn.net`); ffmpeg runs with a protocol whitelist. Writes are atomic. |
+| **Path traversal** | Web-API paths and dossier folder names are validated (including Windows reserved names), so crafted shortcodes or usernames can't escape `~/.heliograph`. |
+| **Attaching to someone else's browser** | Before connecting over CDP, Heliograph checks that the DevTools endpoint belongs to the browser it launched with its own profile. |
+| **Local tampering** | Files under `~/.heliograph` are created with private permissions; external tools (ffmpeg, browsers) are resolved without trusting the current directory; `.env` is only loaded from trusted locations. |
 | **Data leaving your machine** | Everything is local by default. The only optional outbound sink is Langfuse, enabled only when you set `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`, and redaction applies before export. |
 | **Supply-chain risk** | Dependencies are pinned in `uv.lock`; `pip-audit` is part of the dev toolchain. |
 

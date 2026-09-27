@@ -1,12 +1,12 @@
 <p align="center">
-  <img src="../assets/banner.svg" alt="Heliograph — Sinais entre o Claude e o Instagram" width="100%">
+  <img src="../assets/banner.png" alt="Heliograph — Sinais entre o Claude e o Instagram" width="100%">
 </p>
 
 <p align="center">
   <a href="#quick-start"><img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-E0A526?style=flat-square&labelColor=0B1026&logo=python&logoColor=F4EBD9"></a>
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
-  <a href="#how-it-works"><img alt="MCP server" src="https://img.shields.io/badge/MCP-server-F4EBD9?style=flat-square&labelColor=0B1026"></a>
+  <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
   <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
 </p>
 
@@ -35,13 +35,13 @@
 > **Por que "Heliograph"?** A primeira fotografia da história foi uma *heliografia* (Niépce, década de 1820). Um heliógrafo também é um aparelho de sinalização que, com um espelho, envia lampejos de luz solar a distância. Uma câmera e uma ponte — exatamente o que este projeto é.
 
 > [!NOTE]
-> **Status: desenvolvimento inicial (v0.1.0).** A arquitetura está definida e os módulos principais estão sendo construídos. Cada recurso abaixo está marcado como **Disponível**, **Em andamento** ou **Planejado** — nada aqui é uma promessa sem código por trás.
+> **Status: v0.1.0 — inicial, mas funcionando.** Instalação, CLI, servidor MCP (41 ferramentas), os dois drivers e o pipeline de dossiês já foram entregues. As leituras foram verificadas ao vivo com uma conta real no Windows 11 (conta atual, coleções, posts de uma coleção, busca, badges do app, status). As **ações de escrita** (curtir, salvar, seguir, comentar, DM…) estão implementadas e testadas em modo simulação, mas **ainda não foram verificadas com uma conta real**.
 
 ## O que ele faz
 
 - **Permite que o Claude veja e use o Instagram como você** — no app instalado de verdade, com a sua sessão de verdade.
-- **Obtém dados estruturados** (coleções salvas, metadados de reels, legendas, mídia) por meio de um perfil de navegador dedicado e separado, no qual você faz login uma única vez.
-- **Transforma reels em dossiês** — vídeo, quadros-chave, uma transcrição com marcações de tempo e metadados em uma pasta que o Claude pode ler e analisar.
+- **Obtém dados estruturados** (coleções salvas, metadados de reels, legendas, DMs, mídia) por meio de um perfil de navegador dedicado, no qual você faz login uma única vez.
+- **Transforma reels em dossiês** — vídeo, quadros-chave, uma folha de contatos, uma transcrição com marcações de tempo e metadados em uma pasta que o Claude pode ler *e ver*.
 - **Monitora a si mesmo** — *o Olho* registra localmente cada chamada de ferramenta, ação dos drivers e subprocesso, para que falhas possam ser explicadas, por você ou pelo Claude.
 
 ## Recursos
@@ -50,29 +50,29 @@
   <tr>
     <td width="33%" valign="top">
       <h3>Driver do app ao vivo</h3>
-      Controla o app do Instagram da Microsoft Store via Windows UI Automation: ler a tela, navegar, curtir, salvar, seguir, capturar a tela. Sem nenhuma etapa de login.<br><br><sub><b>Em andamento</b></sub>
+      Controla o app do Instagram da Microsoft Store via Windows UI Automation: ler a tela, navegar, rolar, capturar a tela e clicar ou digitar (com a sua confirmação). Sem nenhuma etapa de login.<br><br><sub><b>Disponível · Windows</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Driver profundo</h3>
-      Um perfil dedicado do Edge/Chrome controlado pelo Chrome DevTools Protocol, que lê a própria API web do Instagram de dentro da página para obter JSON limpo, URLs de vídeo e processamento em lote.<br><br><sub><b>Em andamento</b></sub>
+      Um perfil dedicado do Edge/Chrome controlado pelo Chrome DevTools Protocol, que lê a própria API web do Instagram de dentro da página para obter JSON limpo, URLs de vídeo e processamento em lote.<br><br><sub><b>Disponível</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Dossiês de reels</h3>
-      Quadros-chave por mudança de cena com ffmpeg e deduplicação perceptual, além de uma transcrição com faster-whisper, reunidos em um dossiê Markdown por reel.<br><br><sub><b>Em andamento</b></sub>
+      Quadros-chave por mudança de cena com ffmpeg e deduplicação perceptual, uma folha de contatos e uma transcrição com faster-whisper, reunidos em um dossiê Markdown por reel.<br><br><sub><b>Disponível</b></sub>
     </td>
   </tr>
   <tr>
     <td width="33%" valign="top">
       <h3>Servidor MCP</h3>
-      Um servidor FastMCP que se registra automaticamente no Claude Code via <code>.mcp.json</code> quando você abre a pasta.<br><br><sub><b>Em andamento</b></sub>
+      41 ferramentas que se registram automaticamente no Claude Code via <code>.mcp.json</code> quando você abre a pasta, além de duas skills do projeto.<br><br><sub><b>Disponível</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>O Olho</h3>
-      Rastreamento local em primeiro lugar: spans, IDs de rastreamento, ocultação de segredos, snapshots de falhas, visualização ao vivo no terminal e um relatório que o Claude consegue ler.<br><br><sub><b>Disponível (inicial)</b></sub>
+      Rastreamento local em primeiro lugar: spans, IDs de rastreamento, ocultação de segredos, capturas e snapshots DOM de falhas, visualização ao vivo no terminal e relatórios que o Claude consegue ler.<br><br><sub><b>Disponível</b></sub>
     </td>
     <td width="33%" valign="top">
       <h3>Proteções</h3>
-      Ações de escrita exigem confirmação explícita, tudo tem limite de taxa, os downloads são restritos à CDN do Instagram e nenhuma senha jamais passa pelo Heliograph.<br><br><sub><b>Em andamento</b></sub>
+      Ações de escrita só simulam sem confirmação, tudo tem limite de taxa, URLs e downloads estão em lista de permissões e nenhuma senha jamais passa pelo Heliograph.<br><br><sub><b>Disponível · escritas ainda não verificadas ao vivo</b></sub>
     </td>
   </tr>
 </table>
@@ -80,7 +80,7 @@
 <a id="quick-start"></a>
 ## Início rápido
 
-**Você precisa de:** Python 3.11+ (3.12 recomendado), [uv](https://docs.astral.sh/uv/), [ffmpeg](https://ffmpeg.org/), Microsoft Edge ou Google Chrome, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) e, para o driver do app ao vivo no Windows, o app do Instagram da Microsoft Store.
+**Você precisa de:** Python 3.11+ (3.12 recomendado), [ffmpeg](https://ffmpeg.org/), Microsoft Edge ou Google Chrome, [Claude Code](https://docs.anthropic.com/en/docs/claude-code) e, para o driver do app ao vivo no Windows, o app do Instagram da Microsoft Store. O script de instalação instala o [uv](https://docs.astral.sh/uv/) se estiver faltando (depois de perguntar).
 
 ```bash
 # 1. Clone
@@ -91,21 +91,25 @@ cd heliograph
 ./scripts/setup.ps1        # Windows (PowerShell)
 ./scripts/setup.sh         # macOS / Linux
 
-# 3. Open Claude Code in the folder
+# 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
+uv run heliograph login
+
+# 4. Open Claude Code in the folder
 claude
 ```
 
-O Claude Code encontra o servidor MCP do Heliograph em `.mcp.json` e pede sua aprovação na primeira vez. Depois é só perguntar, por exemplo: *"O que tem na minha coleção salva chamada Trading?"*
+O Claude Code encontra o servidor MCP do Heliograph em `.mcp.json` e pede sua aprovação na primeira vez. A instalação pode ser executada de novo sem problemas; adicione `--yes` para pular as perguntas ou `--with-whisper` para baixar antes o modelo de voz (~500 MB). Se algo parecer errado, rode `uv run heliograph doctor`.
 
-> [!IMPORTANT]
-> Os scripts de instalação, o `.mcp.json` e o `heliograph login` estão **em andamento**. Até lá, você pode preparar o ambiente manualmente:
->
-> ```bash
-> uv sync
-> uv run heliograph doctor
-> ```
->
-> O `doctor` verifica o app do Instagram, Edge/Chrome, ffmpeg e seu sistema operacional, e informa o que está faltando.
+## Usando com o Claude
+
+É só conversar com o Claude na pasta do projeto. Por exemplo:
+
+- *"Extraia todas as estratégias da minha coleção 'Trading strats'."* — executa a skill `extract-trading-strategies` de ponta a ponta.
+- *"O que há de novo nas minhas DMs e notificações? Resuma, não responda."*
+- *"Abra o app do Instagram, vá para Reels e me diga o que está na tela."*
+- *"Encontre os cinco últimos posts de @some_creator e escreva um rascunho de comentário no mais recente."* — o Claude mostra primeiro uma simulação; nada é publicado até você dizer sim.
+
+O `CLAUDE.md` dá ao Claude o seu manual de operação (regras de segurança, famílias de ferramentas, solução de problemas), e a skill [`instagram-control`](../../.claude/skills/instagram-control/SKILL.md) ensina qual ferramenta usar.
 
 <a id="how-it-works"></a>
 ## Como funciona
@@ -145,10 +149,10 @@ O app do Instagram da Microsoft Store é um web app do Edge que roda no seu perf
 
 | Driver | Alvo | Ponto forte | Usado para |
 |---|---|---|---|
-| `uia` | A janela do app instalado da Store | Seu app e sessão reais, sem login | Navegar, ler o que está na tela, curtir / salvar / seguir, capturas de tela |
-| `cdp` | Um perfil dedicado do Edge/Chrome aberto como janela de app, DevTools vinculado a `127.0.0.1` | JSON estruturado da API web do Instagram, URLs de vídeo, captura de rede | Coleções salvas, metadados de reels, downloads, extração em massa |
+| `uia` | A janela do app instalado da Store | Seu app e sessão reais, sem login | Navegar, ler o que está na tela, capturas de tela, cliques confirmados |
+| `cdp` | Um perfil dedicado do Edge/Chrome aberto como janela de app, DevTools vinculado a `127.0.0.1` | JSON estruturado da API web do Instagram, URLs de vídeo, captura de rede | Coleções salvas, feeds, DMs, metadados de reels, downloads, extração em massa |
 
-Ambos implementam uma única interface `InstagramDriver` onde se sobrepõem. Veja [docs/ARCHITECTURE.md](../ARCHITECTURE.md) para o design completo.
+Veja [docs/ARCHITECTURE.md](../ARCHITECTURE.md) para o design completo.
 
 </details>
 
@@ -160,10 +164,64 @@ Ambos implementam uma única interface `InstagramDriver` onde se sobrepõem. Vej
 
 | | Windows 10/11 | macOS | Linux |
 |---|---|---|---|
-| Driver profundo (CDP) | Em andamento | Em andamento | Em andamento |
-| Pipeline de mídia e dossiês | Em andamento | Em andamento | Em andamento |
+| Script de instalação | Verificado | Disponível (não testado) | Disponível (não testado) |
+| Driver profundo (CDP) e servidor MCP | Verificado | Disponível (não testado) | Disponível (não testado) |
+| Pipeline de mídia e dossiês | Disponível | Disponível (não testado) | Disponível (não testado) |
 | O Olho | Disponível | Disponível | Disponível |
-| Driver do app ao vivo | Em andamento (UI Automation) | Planejado | Não se aplica |
+| Driver do app ao vivo (ferramentas `app_*`) | Verificado | Planejado | Não se aplica |
+
+</details>
+
+<a id="mcp-tools"></a>
+## Ferramentas MCP
+
+41 ferramentas em sete famílias. Ferramentas de listagem aceitam `limit` e `cursor`; devolva `next_cursor` para ir à próxima página.
+
+<details open>
+<summary><b>Referência de ferramentas</b></summary>
+
+<br>
+
+| Família | Ferramenta | O que faz |
+|---|---|---|
+| **Status** | `heliograph_status` | Saúde: SO, app da Store, navegadores, ffmpeg, estado do login |
+| | `heliograph_setup_check` | O que ainda falta para todas as ferramentas funcionarem |
+| **Leitura** | `ig_whoami` | A conta conectada ao perfil de navegador do Heliograph |
+| | `ig_get_user` | Perfil público de uma conta pelo nome de usuário |
+| | `ig_user_posts` | Posts e reels recentes de uma conta |
+| | `ig_get_media` | Detalhes completos de um post/reel, incluindo legenda e URLs de mídia |
+| | `ig_comments` | Comentários principais de um post/reel |
+| | `ig_search` | Busca principal: usuários, hashtags e lugares |
+| | `ig_timeline` | Seu feed inicial |
+| | `ig_reels_feed` | O feed de descoberta de Reels |
+| | `ig_explore` | Posts da grade Explorar |
+| | `ig_inbox` | Conversas de DM com prévia da última mensagem |
+| | `ig_thread` | Mensagens de uma conversa de DM |
+| | `ig_activity` | Notificações recentes: curtidas, seguidores, comentários, menções |
+| **Coleções** | `ig_list_collections` | Suas coleções salvas |
+| | `ig_collection_posts` | Posts de uma coleção, por nome ou id |
+| | `ig_saved_posts` | Todos os posts salvos, mais recentes primeiro |
+| **Extração** | `ig_extract_media` | Cria (ou reutiliza) um dossiê para um post/reel |
+| | `ig_extract_collection` | Cria dossiês para uma coleção, em lotes |
+| | `ig_read_dossier` | Lê o Markdown, a transcrição e os metadados de um dossiê |
+| | `ig_view_frames` | Retorna a folha de contatos ou quadros como imagens que o Claude pode ver |
+| **App ao vivo** *(Windows)* | `app_open` | Conecta à janela do app do Instagram |
+| | `app_snapshot` | Esboço em texto do que está na tela (árvore de acessibilidade) |
+| | `app_screenshot` | Captura da janela do app, mesmo atrás de outras janelas |
+| | `app_navigate` | Abre uma seção: início, busca, explorar, reels, mensagens… |
+| | `app_click` | Clica um elemento por ref ou nome (escritas exigem sua confirmação) |
+| | `app_scroll` | Rola por telas (um reel por página no visualizador de Reels) |
+| | `app_type` | Digita em um campo (enviar exige sua confirmação) |
+| | `app_visible_posts` | Posts/reels na tela, com seus botões |
+| | `app_badges` | Contadores de não lidos de mensagens e notificações |
+| **Escrita** *(com confirmação)* | `ig_like` / `ig_unlike` | Curte ou descurte um post/reel |
+| | `ig_save` / `ig_unsave` | Salva ou remove, opcionalmente em uma coleção |
+| | `ig_follow` / `ig_unfollow` | Segue ou deixa de seguir uma conta |
+| | `ig_comment` | Publica um comentário com o texto exato que você aprovou |
+| | `ig_send_dm` | Envia uma DM a um usuário ou a uma conversa existente |
+| **Olho** | `eye_report` | Resumo de saúde: taxa de erros, operações lentas e com falha |
+| | `eye_trace` | Cada etapa de uma chamada, com tracebacks e artefatos |
+| | `eye_recent` | Os eventos mais recentes, opcionalmente só erros |
 
 </details>
 
@@ -171,22 +229,24 @@ Ambos implementam uma única interface `InstagramDriver` onde se sobrepõem. Vej
 
 Um fluxo de demonstração: você salva reels de trading em uma coleção do Instagram e o Claude os transforma em anotações que você realmente pode estudar.
 
-1. Você pede ao Claude: *"Extraia as estratégias da minha coleção salva 'Trading'."*
+1. Você pede ao Claude: *"Extraia todas as estratégias da minha coleção 'Trading strats'."*
 2. O Heliograph lista a coleção pelo driver profundo e baixa cada reel da CDN do Instagram.
-3. O pipeline de mídia extrai quadros-chave por mudança de cena (gráficos, setups, anotações) e uma transcrição com marcações de tempo.
-4. Cada reel vira um dossiê; o Claude os lê e escreve as regras de entrada, as saídas, o gerenciamento de risco e as afirmações que não conseguiu verificar.
+3. O pipeline de mídia extrai quadros-chave por mudança de cena (gráficos, setups, anotações), uma folha de contatos e uma transcrição com marcações de tempo.
+4. O Claude lê cada dossiê, **olha os quadros** com `ig_view_frames` e escreve uma nota por reel — regras de entrada, saídas, gestão de risco, configurações de indicadores e as afirmações que não conseguiu verificar — além de um índice.
 
 ```text
-dossiers/<reel-id>/
+~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
-├── video.mp4
-├── transcript.json    # timestamped segments
+├── caption.md
+├── video.mp4          # or images/NN.jpg for photo posts
+├── transcript.json    # timestamped segments + language
 ├── transcript.md
-├── frames/*.jpg       # de-duplicated keyframes
+├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
 
-**Status:** gerador de dossiês **em andamento**; a skill do Claude Code `extract-trading-strategies` está **planejada**.
+As notas são gravadas em `strategies/` na pasta do projeto, que o git ignora porque são dados pessoais. Você também pode criar dossiês sem o Claude: `uv run heliograph extract --collection "Trading strats"`.
 
 > [!CAUTION]
 > O Heliograph organiza o que os criadores dizem; ele não julga se estão certos. Nada do que ele produz é recomendação financeira.
@@ -198,35 +258,35 @@ dossiers/<reel-id>/
 - Cada chamada de ferramenta MCP, ação de driver, requisição HTTP e subprocesso de ffmpeg/whisper é registrado como um **span** com um `trace_id` compartilhado, para que uma única solicitação do Claude possa ser acompanhada de ponta a ponta.
 - Os eventos vão para `~/.heliograph/eye/events.jsonl` (com rotação), com um índice SQLite para consultas.
 - **Segredos são ocultados antes da gravação** — cookies, `sessionid`, `csrftoken`, cabeçalhos de autenticação e strings com cara de token.
-- Quando uma etapa da interface ou do navegador falha, uma captura de tela e um snapshot de acessibilidade/DOM são salvos e vinculados ao evento *(em andamento)*.
-- `heliograph eye` mostra um acompanhamento ao vivo, colorido, com a saúde em tempo real: taxa de erros, latência p95, operações que mais falham.
-- `heliograph eye report` — e a ferramenta MCP `eye_report` *(em andamento)* — resume os erros recentes, para que o Claude possa diagnosticar problemas sozinho.
+- Quando uma etapa da interface ou do navegador falha, uma captura de tela e um snapshot de acessibilidade/DOM são salvos e vinculados ao evento.
+- Todo erro de ferramenta retorna uma **dica** e um **id de rastreamento**; o Claude pode chamar `eye_trace` com ele para ver exatamente o que deu errado.
+- `heliograph eye` mostra um acompanhamento ao vivo, colorido, com a saúde em tempo real: taxa de erros, latência p95, operações que mais falham. `heliograph eye report` resume os erros recentes.
 - Exportação opcional para o Langfuse quando `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY` estão definidas (desativada por padrão).
 
 ## Segurança e privacidade
 
-- **Login manual, uma única vez.** Você mesmo faz login no perfil de navegador dedicado, uma vez. O Heliograph nunca digita, armazena ou registra uma senha.
+- **Login manual, uma única vez.** Você mesmo faz login no perfil de navegador dedicado, uma vez (`heliograph login`). O Heliograph nunca digita, armazena ou registra uma senha.
 - **O driver do app ao vivo não precisa de login** — ele usa o app do Instagram em que você já está conectado.
-- **Ações de escrita exigem confirmação.** Curtir, seguir, comentar, enviar DM, publicar e remover dos salvos exigem um `confirm=True` explícito na camada MCP, então o Claude precisa perguntar a você primeiro.
+- **Ações de escrita simulam por padrão.** Curtir, seguir, comentar, DM, salvar e seus inversos retornam uma descrição do que *aconteceria*; só agem quando chamados de novo com `confirm=true`, depois que você disse sim no chat. O mesmo vale para clicar em botões de ação ou enviar texto no app ao vivo.
 - **Limites de taxa com variação aleatória** em escritas *e* leituras, para manter um ritmo humano.
-- **Dados apenas locais.** Dossiês, logs e o perfil do navegador ficam em `~/.heliograph` na sua máquina. A porta do DevTools é vinculada a `127.0.0.1`, em uma porta livre aleatória.
-- **Downloads em lista de permissões** — somente HTTPS a partir dos hosts da CDN do Instagram.
+- **Dados apenas locais.** Dossiês, logs e o perfil do navegador ficam em `~/.heliograph` na sua máquina, com permissões de arquivo privadas. A porta do DevTools é vinculada a `127.0.0.1`, em uma porta livre aleatória.
+- **Listas de permissões rígidas** — só URLs do Instagram são aceitas, e downloads chegam apenas via HTTPS dos hosts da CDN do Instagram. Proteções contra path traversal cobrem o cliente da API e as pastas de dossiês.
 
 Veja [docs/SECURITY.md](../SECURITY.md) para o modelo de ameaças e como relatar uma vulnerabilidade.
 
 ## Referência da CLI
 
-> Esta é a **interface planejada**. A coluna Status mostra o que funciona hoje.
-
 | Comando | O que faz | Status |
 |---|---|---|
-| `heliograph setup` | Instala dependências, verifica o ambiente e registra o servidor MCP | Planejado (esboço) |
-| `heliograph doctor` | Detecta o app do Instagram, Edge/Chrome, ffmpeg, sistema operacional e estado do login | Disponível |
-| `heliograph login` | Abre o perfil de navegador dedicado para você fazer login uma vez, manualmente | Planejado (esboço) |
-| `heliograph mcp` | Executa o servidor MCP via stdio (o Claude Code o inicia para você) | Planejado (esboço) |
-| `heliograph extract <url>` | Gera um dossiê para um reel ou post | Planejado (esboço) |
+| `heliograph setup` | Verifica o ambiente, oferece correções (Chromium, app da Store), baixa o Whisper opcionalmente, mostra os próximos passos | Disponível |
+| `heliograph doctor` | Detecta o app do Instagram, Edge/Chrome, ffmpeg, SO e estado do login (`--json` para saída bruta) | Disponível |
+| `heliograph login` | Abre o perfil de navegador dedicado para você fazer login uma vez, manualmente | Disponível |
+| `heliograph mcp` | Executa o servidor MCP via stdio (o Claude Code o inicia para você) | Disponível |
+| `heliograph extract <url>` | Gera um dossiê para um reel/post, ou `--collection "<nome>"` para uma coleção inteira | Disponível |
 | `heliograph eye` | Acompanhamento ao vivo do Olho com indicadores de saúde | Disponível |
 | `heliograph eye report` | Resumo de erros e anomalias recentes | Disponível |
+
+A maioria dos comandos aceita `--account <chave>` para usar um perfil de navegador separado.
 
 <details>
 <summary><b>Estrutura do projeto</b></summary>
@@ -235,34 +295,38 @@ Veja [docs/SECURITY.md](../SECURITY.md) para o modelo de ameaças e como relatar
 
 ```text
 src/heliograph/
-├── cli.py              # Typer CLI
+├── cli.py              # Typer CLI entry point
+├── commands/           # setup, doctor, login, extract
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
-│   └── cdp/            # browser launcher, CDP session, web-API client
-├── instagram/          # models + high-level service
+│   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
+├── instagram/          # models, service, collections, write actions
 ├── media/              # allow-listed download, ffmpeg frames, faster-whisper
 ├── extract/            # reel -> dossier
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
-└── mcp/                # FastMCP server (in progress)
+└── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
-scripts/                # setup.ps1 / setup.sh (in progress)
-.claude/skills/         # Claude Code skills (planned)
-.mcp.json               # MCP registration for Claude Code (in progress)
+scripts/                # setup.ps1 / setup.sh
+.claude/skills/         # extract-trading-strategies, instagram-control
+.mcp.json               # registers the MCP server with Claude Code
+CLAUDE.md               # operating manual for Claude
 ```
 
 </details>
 
 ## Roadmap
 
-- [ ] Instalação com um único comando, registro via `.mcp.json` e `heliograph login`
-- [ ] Servidor MCP com ferramentas de leitura e, depois, ferramentas de escrita com confirmação
-- [ ] Skill `extract-trading-strategies`
-- [ ] Suporte a **várias contas** (perfis e estado separados por conta)
+- [x] Instalação com um único comando, registro via `.mcp.json` e `heliograph login`
+- [x] Servidor MCP com ferramentas de leitura, coleções, extração, app ao vivo, escrita e Olho
+- [x] Skills `extract-trading-strategies` e `instagram-control`
+- [ ] Verificação ao vivo de cada ação de escrita
+- [ ] CI no Windows, macOS e Linux
+- [ ] Suporte a **várias contas** nas sessões do Claude (perfis separados já funcionam com `--account`)
 - [ ] **Android** via `adb`
 - [ ] Driver do app ao vivo para **macOS** (API de Acessibilidade)
 
