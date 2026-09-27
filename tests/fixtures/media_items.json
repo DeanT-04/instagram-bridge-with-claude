@@ -1,0 +1,55 @@
+{
+  "reel": {
+    "pk": "3412345678901234567",
+    "id": "3412345678901234567_123456789",
+    "code": "C8abcDEF123",
+    "media_type": 2,
+    "product_type": "clips",
+    "taken_at": 1719000000,
+    "caption": {"pk": "1", "text": "My 3-step breakout strategy #trading"},
+    "user": {"pk": "123456789", "username": "trader.joe", "full_name": "Joe Trader", "is_verified": true},
+    "like_count": 1520,
+    "comment_count": 87,
+    "play_count": 45000,
+    "ig_play_count": 46000,
+    "video_duration": 42.5,
+    "video_versions": [
+      {"type": 101, "url": "https://scontent.cdninstagram.com/v/low.mp4", "width": 480, "height": 854},
+      {"type": 102, "url": "https://scontent.cdninstagram.com/v/high.mp4", "width": 720, "height": 1280}
+    ],
+    "image_versions2": {"candidates": [
+      {"url": "https://scontent.cdninstagram.com/v/thumb_small.jpg", "width": 320, "height": 568},
+      {"url": "https://scontent.cdninstagram.com/v/thumb_big.jpg", "width": 1080, "height": 1920}
+    ]}
+  },
+  "photo": {
+    "pk": 111,
+    "id": "111_222",
+    "code": "Cphoto1",
+    "media_type": 1,
+    "taken_at": "1700000000",
+    "caption": null,
+    "user": {"pk": 222, "username": "someone"},
+    "like_count": "12",
+    "image_versions2": {"candidates": [{"url": "https://scontent.cdninstagram.com/p.jpg", "width": 1080, "height": 1080}]}
+  },
+  "carousel": {
+    "pk": "999",
+    "id": "999_1",
+    "code": "Ccarou1",
+    "media_type": 8,
+    "user": {"pk": "1", "username": "carol"},
+    "carousel_media": [
+      {"pk": "9991", "id": "9991_1", "media_type": 1,
+       "image_versions2": {"candidates": [{"url": "https://scontent.cdninstagram.com/c1.jpg", "width": 1080, "height": 1350}]}},
+      {"pk": "9992", "id": "9992_1", "media_type": 2,
+       "video_versions": [{"url": "https://scontent.cdninstagram.com/c2.mp4", "width": 720, "height": 900}],
+       "video_duration": 9}
+    ]
+  },
+  "saved_wrapper": {
+    "media": {"pk": "555", "id": "555_1", "code": "Csaved1", "media_type": 2, "product_type": "feed",
+              "video_versions": [{"url": "https://scontent.cdninstagram.com/s.mp4"}]}
+  },
+  "minimal": {"pk": "42"}
+}

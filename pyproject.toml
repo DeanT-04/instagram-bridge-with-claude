@@ -1,0 +1,71 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "heliograph"
+version = "0.1.0"
+description = "Heliograph: a local Instagram <-> Claude bridge (MCP) with built-in observability."
+readme = "docs/ARCHITECTURE.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Heliograph contributors" }]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "pydantic>=2.7,<3",
+    "pydantic-settings>=2.3,<3",
+    "typer>=0.12",
+    "rich>=13.7",
+    "httpx>=0.27,<1",
+    "playwright>=1.45,<2",
+    "mcp>=1.2,<2",
+    "faster-whisper>=1.0,<2",
+    "pillow>=10.3",
+    "imagehash>=4.3,<5",
+    "uiautomation>=2.0.20; sys_platform == 'win32'",
+    "pywin32>=306; sys_platform == 'win32'",
+]
+
+[project.scripts]
+heliograph = "heliograph.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.2",
+    "pytest-asyncio>=0.23",
+    "ruff>=0.5",
+    "mypy>=1.10",
+    "pip-audit>=2.7",
+]
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/heliograph"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+src = ["src", "tests"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "UP", "B", "SIM", "RUF", "ASYNC"]
+ignore = ["RUF001", "RUF002", "RUF003", "SIM105", "ASYNC109"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+markers = [
+    "live: tests that touch the real device, network or Instagram (deselect with -m 'not live')",
+]
+addopts = "-m 'not live'"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+mypy_path = "src"
+packages = ["heliograph"]
+ignore_missing_imports = true
