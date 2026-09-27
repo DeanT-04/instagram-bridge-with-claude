@@ -147,13 +147,13 @@ def reels_tree() -> RawNode:
         "main",
         "",
         group(
-            *reel("howblooper", "Psych is a comedy", "2,869", 12),
-            *reel("_heyclicky", "i went to india", "511", 11, off=True),
+            *reel("creator.one", "A synthetic comedy clip", "2,869", 12),
+            *reel("_creator_two", "a synthetic travel clip", "511", 11, off=True),
         ),
         btn("Navigate to next reel"),
     )
     return n(
-        "document", "Instagram", group(*nav_rail()), main, value=IG + "reels/Ddenr6/", rect=VIEW
+        "document", "Instagram", group(*nav_rail()), main, value=IG + "reels/DSynth01/", rect=VIEW
     )
 
 

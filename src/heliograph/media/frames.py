@@ -31,7 +31,7 @@ import imagehash
 from PIL import Image, ImageDraw, ImageFont
 
 from heliograph.eye import attach_artifact, span
-from heliograph.media.ffmpeg import FFmpegError, run
+from heliograph.media.ffmpeg import FFmpegError, input_args, output_path, run
 
 __all__ = [
     "INDEX_NAME",
@@ -161,9 +161,9 @@ def extract_keyframes(
             proc = run(
                 "ffmpeg",
                 [
-                    "-hide_banner", "-nostdin", "-y", "-i", str(video),
+                    "-hide_banner", "-nostdin", "-y", *input_args(video),
                     "-an", "-sn", "-dn", "-vf", vf, "-fps_mode", "vfr",
-                    "-q:v", str(jpeg_qscale), str(raw_dir / "raw_%05d.jpg"),
+                    "-q:v", str(jpeg_qscale), output_path(raw_dir / "raw_%05d.jpg"),
                 ],
                 timeout=timeout,
                 op="frames",
@@ -209,6 +209,9 @@ def load_index(out_dir: Path) -> list[Frame] | None:
         ]
     except (ValueError, KeyError, TypeError):
         return None
+    root = out_dir.resolve()
+    if not all(f.path.resolve().parent == root for f in frames):
+        return None  # a tampered index must not point outside the frames folder
     return frames if all(f.path.is_file() for f in frames) else None
 
 

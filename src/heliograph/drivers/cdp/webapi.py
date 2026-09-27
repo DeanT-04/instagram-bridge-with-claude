@@ -8,8 +8,9 @@ from inside the page). Every call is an eye span and passes a client-side rate l
 from __future__ import annotations
 
 import json
+import re
 from typing import Any, Literal, Protocol
-from urllib.parse import urlencode
+from urllib.parse import unquote, urlencode
 
 from heliograph.drivers.cdp.ratelimit import RateLimiter, limiter_for
 from heliograph.errors import HeliographError, NotLoggedInError, RateLimitedError
@@ -20,10 +21,16 @@ __all__ = ["IG_APP_ID", "Evaluator", "InstagramApiError", "WebApiClient", "build
 IG_APP_ID = "936619743392459"
 ASBD_ID = "129477"
 _ALLOWED_PREFIXES = ("/api/v1/", "/graphql/", "/api/graphql")
+# Control chars/whitespace, backslash, fragment, and percent-encoded "/", "\" or NUL.
+_BAD_PATH_CHARS = re.compile(r"[\x00-\x20\x7f\\#]|%(?:2f|5c|00)", re.IGNORECASE)
+IG_ORIGIN = "https://www.instagram.com"
 _LOGIN_MARKERS = ("login_required", "/accounts/login", "checkpoint_required", "not-logged-in")
 _RATE_MARKERS = ("please wait a few minutes", "feedback_required", "rate_limit_error", "spam")
 
 FETCH_JS = """async ([path, method, body, appId, asbd]) => {
+  if (location.origin !== 'https://www.instagram.com') {
+    return {status: 0, wrongOrigin: location.origin, url: '', body: ''};
+  }
   const csrf = (document.cookie.match(/(?:^|; )csrftoken=([^;]+)/) || [])[1] || '';
   const headers = {'x-ig-app-id': appId, 'x-csrftoken': csrf,
                    'x-requested-with': 'XMLHttpRequest', 'x-asbd-id': asbd};
@@ -59,10 +66,29 @@ class InstagramApiError(HeliographError):
         self.path = path
 
 
+def _check_path(path: str) -> None:
+    """Refuse anything that could leave the API prefixes once the browser resolves it.
+
+    The browser's URL parser strips tabs/newlines, treats ``\\`` as ``/`` and resolves
+    ``..``/``%2e%2e`` dot-segments, so ``/api/v1/../../accounts/...`` would otherwise escape
+    the allow-list (still same-origin, but outside the API surface).
+    """
+    if (
+        not isinstance(path, str)
+        or not path.startswith(_ALLOWED_PREFIXES)
+        or not path.isascii()
+        or "//" in path
+        or _BAD_PATH_CHARS.search(path)
+    ):
+        raise ValueError(f"Refusing non-API path {path!r}")
+    segments = unquote(path.split("?", 1)[0]).split("/")
+    if any(seg in (".", "..") for seg in segments):
+        raise ValueError(f"Refusing non-API path {path!r}")
+
+
 def build_url(path: str, params: dict[str, Any] | None = None) -> str:
     """Validate an API path and append URL-encoded ``params`` (None values dropped)."""
-    if not path.startswith(_ALLOWED_PREFIXES) or "//" in path or "\\" in path:
-        raise ValueError(f"Refusing non-API path {path!r}")
+    _check_path(path)
     clean = {k: _scalar(v) for k, v in (params or {}).items() if v is not None}
     if not clean:
         return path
@@ -136,6 +162,12 @@ class WebApiClient:
                         data_keys=sorted(data or {})) as s:
             waited = await (self.write_limiter if write else self.read_limiter).acquire()
             raw = await self.page.evaluate(FETCH_JS, [url, method, body, IG_APP_ID, ASBD_ID])
+            if raw.get("wrongOrigin") is not None:
+                # The page navigated away from Instagram: never run API calls (and never
+                # trust responses) from a foreign origin.
+                raise InstagramApiError(
+                    f"Refusing {url}: the page is on {raw['wrongOrigin']!r}, not {IG_ORIGIN}",
+                    path=url, hint="Navigate the Heliograph window back to instagram.com.")
             status = int(raw.get("status", 0))
             text = str(raw.get("body") or "")
             s.set(status=status, bytes=len(text), throttle_wait=round(waited, 3))

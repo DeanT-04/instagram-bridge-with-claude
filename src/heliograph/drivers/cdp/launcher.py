@@ -104,7 +104,7 @@ class BrowserLauncher:
             ]
             for source, port in candidates:
                 ep = devtools.probe_endpoint(port) if port else None
-                if ep and self._owned_by_profile(port, source):
+                if ep and self._owned_by_profile(port, source, ep):
                     s.set(source=source, port=port)
                     return self._record(ep)
             proc = devtools.find_browser_process(self.profile_dir)
@@ -116,14 +116,21 @@ class BrowserLauncher:
             s.set(source=None)
             return None
 
-    def _owned_by_profile(self, port: int | None, source: str) -> bool:
-        # DevToolsActivePort lives inside the profile, so it is authoritative. A port from
-        # state.json could have been reused by another browser; confirm via process scan
-        # only when that scan is conclusive.
-        if source == "DevToolsActivePort":
-            return True
+    def _owned_by_profile(self, port: int | None, source: str, ep: CdpEndpoint) -> bool:
+        # A port can outlive our browser (crash, reboot) and be reused by *another* DevTools
+        # server — e.g. the user's everyday browser started with a debug port. Attaching
+        # there would hand Heliograph's commands (and that browser's session) to the wrong
+        # profile, so a candidate port must be positively tied to our profile:
+        # * DevToolsActivePort (inside the profile): its browser-target path must match
+        #   the live endpoint's webSocketDebuggerUrl;
+        # * state.json: a process scan must find our profile's browser on that port.
         proc = devtools.find_browser_process(self.profile_dir)
-        return proc is None or proc.port == port
+        if proc is not None and proc.port != port:
+            return False
+        if source == "DevToolsActivePort":
+            ws_path = devtools.read_devtools_active_ws_path(self.profile_dir)
+            return ws_path is None or ep.ws_url.endswith(ws_path)
+        return proc is not None
 
     def ensure_running(self) -> CdpEndpoint:
         """Reuse a running instance or launch a new one; returns a validated endpoint.

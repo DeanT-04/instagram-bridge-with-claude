@@ -18,7 +18,7 @@ from typing import Any
 from heliograph.errors import HeliographError
 from heliograph.eye import span
 
-__all__ = ["FFmpegError", "MediaInfo", "probe", "require", "run"]
+__all__ = ["FFmpegError", "MediaInfo", "input_args", "output_path", "probe", "require", "run"]
 
 
 class FFmpegError(HeliographError):
@@ -33,6 +33,22 @@ def require(tool: str) -> str:
     if path is None:
         raise FFmpegError(f"{tool} not found on PATH")
     return path
+
+
+def input_args(path: Path) -> list[str]:
+    """``-i`` arguments for an untrusted local media file.
+
+    * ``-protocol_whitelist file``: a downloaded "video" that is really an HLS/concat
+      playlist cannot make ffmpeg fetch URLs (SSRF) or pull in other protocols.
+    * The path is made absolute, so a name starting with ``-`` or containing ``:`` can never
+      be read as an option or a protocol prefix.
+    """
+    return ["-protocol_whitelist", "file", "-i", str(Path(path).resolve())]
+
+
+def output_path(path: Path) -> str:
+    """Absolute output path (never mistaken for an option or protocol)."""
+    return str(Path(path).resolve())
 
 
 def run(tool: str, args: list[str], *, timeout: float, op: str) -> subprocess.CompletedProcess[str]:
@@ -87,7 +103,8 @@ def probe(path: Path, *, timeout: float = 60) -> MediaInfo:
     """Inspect ``path`` with ffprobe (duration, first video stream size, audio presence)."""
     proc = run(
         "ffprobe",
-        ["-v", "error", "-print_format", "json", "-show_format", "-show_streams", str(path)],
+        ["-v", "error", "-print_format", "json", "-show_format", "-show_streams",
+         "-protocol_whitelist", "file", str(Path(path).resolve())],
         timeout=timeout,
         op="probe",
     )

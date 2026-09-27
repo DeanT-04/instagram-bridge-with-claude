@@ -10,15 +10,16 @@ from __future__ import annotations
 
 import asyncio
 import time
+import unicodedata
 from typing import Any, ClassVar
 
 from heliograph.config import get_settings
 from heliograph.drivers.uia import actions
 from heliograph.drivers.uia.core import UiaCore
-from heliograph.drivers.uia.tree import Node
+from heliograph.drivers.uia.tree import Node, Snapshot
 from heliograph.errors import ElementNotFoundError, RateLimitedError, UnsafeActionError
 
-__all__ = ["WRITE_CONTROL_NAMES", "WriteActions", "is_write_control"]
+__all__ = ["WRITE_CONTROL_NAMES", "WriteActions", "is_write_control", "normalize_control_name"]
 
 WRITE_CONTROL_NAMES = frozenset(
     {
@@ -45,9 +46,54 @@ WRITE_CONTROL_NAMES = frozenset(
 )
 
 
-def is_write_control(node: Node) -> bool:
-    """True if pressing ``node`` could change the account (like, follow, post...)."""
-    return node.role in ("button", "hyperlink", "menuitem") and node.name in WRITE_CONTROL_NAMES
+_WRITE_NAMES_FOLDED = frozenset(n.casefold() for n in WRITE_CONTROL_NAMES)
+# Leading verbs that mark a control as account-changing even with a suffix
+# ("Unfollow alice", "Delete comment", "Report post", "Block user"...).
+_WRITE_VERBS = frozenset({
+    "like", "unlike", "follow", "unfollow", "save", "unsave", "remove", "repost", "post",
+    "send", "share", "delete", "block", "unblock", "report", "restrict", "unrestrict",
+    "unsend", "mute", "unmute", "requested", "following", "log", "logout",
+})
+
+
+def normalize_control_name(name: str) -> str:
+    """Canonical form for write-control matching: NFKC, no format/zero-width characters,
+    collapsed whitespace, case-folded (so "LIKE", "Like​" and "Follow back" match)."""
+    text = unicodedata.normalize("NFKC", name or "")
+    text = "".join(ch for ch in text if unicodedata.category(ch) not in ("Cf", "Cc"))
+    return " ".join(text.split()).casefold()
+
+
+def _is_write_name(name: str) -> bool:
+    norm = normalize_control_name(name)
+    if not norm:
+        return False
+    first = norm.split(" ", 1)[0]
+    return norm in _WRITE_NAMES_FOLDED or first in _WRITE_VERBS
+
+
+def is_write_control(node: Node, snap: Snapshot | None = None) -> bool:
+    """True if pressing ``node`` could change the account (like, follow, post...).
+
+    Any role counts (a click on the ``image "Like"`` icon inside a button lands on the
+    button), names are compared after :func:`normalize_control_name`, and with ``snap``
+    the node's ancestors are checked too (clicking inside a write button presses it).
+    """
+    if _is_write_name(node.name):
+        return True
+    if snap is None:
+        return False
+    seen: set[str] = set()
+    parent = node.parent
+    while parent is not None and parent not in seen:
+        seen.add(parent)
+        anc = snap.get(parent)
+        if anc is None:
+            break
+        if _is_write_name(anc.name):
+            return True
+        parent = anc.parent
+    return False
 
 
 class WriteActions(UiaCore):

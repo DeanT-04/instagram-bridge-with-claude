@@ -12,6 +12,7 @@ from urllib.parse import quote, urlparse
 
 __all__ = [
     "code_to_pk",
+    "is_instagram_url",
     "media_id_to_pk",
     "parse_collection_links",
     "pk_to_code",
@@ -21,6 +22,42 @@ __all__ = [
 _ALPHABET = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_"
 _INDEX = {c: i for i, c in enumerate(_ALPHABET)}
 _SHORTCODE_URL = re.compile(r"/(?:p|reel|reels|tv)/([A-Za-z0-9_-]+)")
+_SEGMENT = re.compile(r"^[A-Za-z0-9_-]{1,128}$")
+_IG_HOSTS = frozenset({"www.instagram.com", "instagram.com"})
+# Characters that URL parsers disagree on (WHATWG treats a backslash as "/" and strips
+# tabs/newlines; Python's urllib does neither): a URL containing any of them is refused.
+_URL_BAD_CHARS = re.compile(r"[\x00-\x20\x7f\\]")
+
+
+def is_instagram_url(url: str) -> bool:
+    """True only for a plain ``https://www.instagram.com/...`` (or bare-domain) URL.
+
+    Strict on purpose, because the result gates what a real, logged-in browser opens:
+    no userinfo, no non-default port, ASCII only, and no characters on which Python's
+    ``urlparse`` and the browser's URL parser disagree (``https://evil.com<backslash>@``
+    ``www.instagram.com/`` is ``evil.com`` to Chromium).
+    """
+    if not isinstance(url, str) or not url.isascii() or _URL_BAD_CHARS.search(url):
+        return False
+    p = urlparse(url)
+    if p.scheme != "https" or p.username is not None or p.password is not None:
+        return False
+    try:
+        port = p.port
+    except ValueError:
+        return False
+    if port not in (None, 443):
+        return False
+    host = p.hostname or ""
+    return host in _IG_HOSTS and p.netloc.lower() in (host, f"{host}:443")
+
+
+def _seg(value: str | int) -> str:
+    """Validate one URL path segment taken from caller input (ids, pks, thread ids)."""
+    text = str(value)
+    if not _SEGMENT.match(text):
+        raise ValueError(f"Invalid Instagram identifier {text!r}")
+    return text
 
 
 def code_to_pk(code: str) -> str:
@@ -84,7 +121,7 @@ def parse_collection_links(hrefs: list[tuple[str, str]], username: str) -> list[
 
 # -- paths ------------------------------------------------------------------------
 def user_info(pk: str) -> str:
-    return f"/api/v1/users/{pk}/info/"
+    return f"/api/v1/users/{_seg(pk)}/info/"
 
 
 def web_profile_info() -> str:
@@ -96,15 +133,15 @@ def user_feed(username: str) -> str:
 
 
 def user_feed_by_pk(pk: str) -> str:
-    return f"/api/v1/feed/user/{pk}/"
+    return f"/api/v1/feed/user/{_seg(pk)}/"
 
 
 def media_info(pk: str) -> str:
-    return f"/api/v1/media/{pk}/info/"
+    return f"/api/v1/media/{_seg(pk)}/info/"
 
 
 def media_comments(pk: str) -> str:
-    return f"/api/v1/media/{pk}/comments/"
+    return f"/api/v1/media/{_seg(pk)}/comments/"
 
 
 WEB_FORM_DATA = "/api/v1/accounts/edit/web_form_data/"
@@ -119,40 +156,40 @@ NEWS_INBOX = "/api/v1/news/inbox/"
 
 
 def collection_posts(collection_id: str) -> str:
-    return f"/api/v1/feed/collection/{collection_id}/posts/"
+    return f"/api/v1/feed/collection/{_seg(collection_id)}/posts/"
 
 
 def direct_thread(thread_id: str) -> str:
-    return f"/api/v1/direct_v2/threads/{thread_id}/"
+    return f"/api/v1/direct_v2/threads/{_seg(thread_id)}/"
 
 
 # -- write paths (not live-verified by design) ----------------------------------------
 def like(pk: str) -> str:
-    return f"/api/v1/web/likes/{pk}/like/"
+    return f"/api/v1/web/likes/{_seg(pk)}/like/"
 
 
 def unlike(pk: str) -> str:
-    return f"/api/v1/web/likes/{pk}/unlike/"
+    return f"/api/v1/web/likes/{_seg(pk)}/unlike/"
 
 
 def save(pk: str) -> str:
-    return f"/api/v1/web/save/{pk}/save/"
+    return f"/api/v1/web/save/{_seg(pk)}/save/"
 
 
 def unsave(pk: str) -> str:
-    return f"/api/v1/web/save/{pk}/unsave/"
+    return f"/api/v1/web/save/{_seg(pk)}/unsave/"
 
 
 def follow(user_pk: str) -> str:
-    return f"/api/v1/friendships/create/{user_pk}/"
+    return f"/api/v1/friendships/create/{_seg(user_pk)}/"
 
 
 def unfollow(user_pk: str) -> str:
-    return f"/api/v1/friendships/destroy/{user_pk}/"
+    return f"/api/v1/friendships/destroy/{_seg(user_pk)}/"
 
 
 def add_comment(pk: str) -> str:
-    return f"/api/v1/web/comments/{pk}/add/"
+    return f"/api/v1/web/comments/{_seg(pk)}/add/"
 
 
 DIRECT_BROADCAST_TEXT = "/api/v1/direct_v2/threads/broadcast/text/"

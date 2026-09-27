@@ -44,6 +44,7 @@ from heliograph.media.transcribe import Transcript, load_transcript, transcribe
 __all__ = ["Dossier", "abuild_dossier", "build_dossier", "dossier_dir"]
 
 _UNSAFE = re.compile(r"[^A-Za-z0-9._-]+")
+_RESERVED = re.compile(r"^(con|prn|aux|nul|conin\$|conout\$|com[0-9]|lpt[0-9])$", re.IGNORECASE)
 _EXT_BY_TYPE = {"image/jpeg": ".jpg", "image/png": ".png", "image/webp": ".webp",
                 "image/heic": ".heic", "image/gif": ".gif"}
 
@@ -69,8 +70,14 @@ class Dossier:
 
 
 def _safe(part: str | None, fallback: str) -> str:
-    cleaned = _UNSAFE.sub("_", part or "").strip("._")[:100]
-    return cleaned or fallback
+    cleaned = _UNSAFE.sub("_", part or "").strip("._")[:100].strip("._")
+    if not cleaned:
+        return fallback
+    # Windows device names (CON, NUL, COM1, LPT1...) are reserved even with an extension;
+    # Instagram usernames such as "con" or "aux.x" are legal, so prefix them.
+    if _RESERVED.match(cleaned.split(".", 1)[0]):
+        cleaned = f"_{cleaned}"
+    return cleaned
 
 
 def dossier_dir(media: Media, out_root: Path) -> Path:

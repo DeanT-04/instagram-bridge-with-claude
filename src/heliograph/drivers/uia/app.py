@@ -18,7 +18,8 @@ import time
 from dataclasses import dataclass
 from typing import Any
 
-from heliograph.errors import AppNotInstalledError, DriverUnavailableError
+from heliograph.errors import AppNotInstalledError, DriverUnavailableError, UnsafeActionError
+from heliograph.instagram.endpoints import is_instagram_url
 
 __all__ = [
     "APP_ID",
@@ -39,6 +40,7 @@ AUMID = "Facebook.InstagramBeta_8xx8rvfyw5nnt!App"
 APP_ID = "akpamiohjfcnimfljfndmaldlcfphjmp"
 """Edge web-app id of the Store Instagram PWA (``--app-id=`` on its msedge process)."""
 WINDOW_CLASS = "Chrome_WidgetWin_1"
+_IG_PREFIX = "https://www.instagram.com/"
 
 
 @dataclass(frozen=True, slots=True)
@@ -126,6 +128,11 @@ def launch(url: str | None = None) -> None:
             raise AppNotInstalledError("Instagram Store app (Facebook.InstagramBeta) not installed")
         subprocess.Popen(["explorer.exe", f"shell:AppsFolder\\{AUMID}"], creationflags=flags)
         return
+    # The URL becomes part of an msedge argument: accept only a plain in-scope Instagram
+    # URL (no whitespace/quotes/backslashes, no userinfo or port) so it can never smuggle
+    # extra switches such as --remote-debugging-port into the user's real Edge profile.
+    if not url.startswith(_IG_PREFIX) or not is_instagram_url(url) or '"' in url:
+        raise UnsafeActionError(f"refusing to open a non-Instagram URL in the app: {url!r}")
     cmd = [
         edge_executable(),
         "--profile-directory=Default",

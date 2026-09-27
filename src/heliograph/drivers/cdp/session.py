@@ -14,7 +14,6 @@ from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
-from urllib.parse import urlparse
 
 from heliograph.config import Settings, get_settings
 from heliograph.drivers.cdp.capture import DEFAULT_PATTERNS, NetworkCapture
@@ -28,6 +27,7 @@ from heliograph.errors import (
     NotLoggedInError,
 )
 from heliograph.eye import ActiveSpan, attach_artifact, span
+from heliograph.instagram.endpoints import is_instagram_url as _strict_is_instagram_url
 
 if TYPE_CHECKING:
     from playwright.async_api import Browser, BrowserContext, Page, Playwright
@@ -38,9 +38,12 @@ LOGIN_URL = "https://www.instagram.com/accounts/login/"
 
 
 def is_instagram_url(url: str) -> bool:
-    """True for ``https://www.instagram.com/...`` (or the bare domain)."""
-    p = urlparse(url)
-    return p.scheme == "https" and p.hostname in ("www.instagram.com", "instagram.com")
+    """True for ``https://www.instagram.com/...`` (or the bare domain).
+
+    Delegates to :func:`heliograph.instagram.endpoints.is_instagram_url`, which also refuses
+    userinfo, odd ports and parser-differential characters (backslash, whitespace).
+    """
+    return _strict_is_instagram_url(url)
 
 
 class CdpDriver:

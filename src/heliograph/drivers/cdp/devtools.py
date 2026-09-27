@@ -40,6 +40,12 @@ __all__ = [
 HOST = "127.0.0.1"
 _PORT_RE = re.compile(r"--remote-debugging-port=(\d+)")
 _UDD_RE = re.compile(r"--user-data-dir=(?:\"([^\"]+)\"|(\S+))")
+_BROWSER_EXES = frozenset({
+    "msedge.exe", "chrome.exe", "chromium.exe",
+    "msedge", "microsoft-edge", "microsoft-edge-stable", "microsoft-edge-beta",
+    "chrome", "google-chrome", "google-chrome-stable", "google-chrome-beta",
+    "chromium", "chromium-browser", "google chrome", "microsoft edge", "chromium.app",
+})
 
 
 @dataclass(frozen=True)
@@ -67,6 +73,16 @@ def read_devtools_active_port(profile_dir: Path) -> int | None:
     return port if 0 < port < 65536 else None
 
 
+def read_devtools_active_ws_path(profile_dir: Path) -> str | None:
+    """The browser-target path (``/devtools/browser/<id>``) from ``DevToolsActivePort``."""
+    try:
+        lines = (profile_dir / "DevToolsActivePort").read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return None
+    path = lines[1].strip() if len(lines) > 1 else ""
+    return path if path.startswith("/devtools/browser/") else None
+
+
 def probe_endpoint(port: int, *, timeout: float = 2.0) -> CdpEndpoint | None:
     """Validate ``port`` by fetching ``/json/version``; None if nothing answers there."""
     with span("cdp.probe", port=port) as s:
@@ -77,6 +93,11 @@ def probe_endpoint(port: int, *, timeout: float = 2.0) -> CdpEndpoint | None:
             data = None
         if not isinstance(data, dict) or not data.get("webSocketDebuggerUrl"):
             s.set(ok=False)
+            return None
+        ws = str(data["webSocketDebuggerUrl"])
+        if not ws.startswith((f"ws://{HOST}:{port}/", f"ws://localhost:{port}/")):
+            # Playwright follows this URL; never let a local listener redirect us elsewhere.
+            s.set(ok=False, reason="ws_not_local")
             return None
         s.set(ok=True, browser=data.get("Browser"))
         return CdpEndpoint(port=port, ws_url=str(data["webSocketDebuggerUrl"]),
@@ -94,11 +115,25 @@ def _norm(path: str | Path) -> str:
     return str(Path(path)).rstrip("\\/").lower()
 
 
+def _executable_name(cmdline: str) -> str:
+    """Lower-cased file name of the program in ``cmdline`` (quoted or up to `` --``)."""
+    text = cmdline.strip()
+    quoted = text.startswith('"')
+    exe = text[1:].split('"', 1)[0] if quoted else text.split(" --", 1)[0].strip()
+    return exe.replace("\\", "/").rsplit("/", 1)[-1].lower()
+
+
 def parse_cmdline_port(cmdline: str, profile_dir: Path) -> int | None:
-    """Return the debug port if ``cmdline`` is a browser using ``profile_dir``."""
+    """Return the debug port if ``cmdline`` is a browser using ``profile_dir``.
+
+    Only Chromium-family executables count, so an arbitrary local process cannot claim our
+    profile just by putting ``--user-data-dir=<profile>`` on its own command line.
+    """
     udd = _UDD_RE.search(cmdline)
     port = _PORT_RE.search(cmdline)
     if not udd or not port or "--type=" in cmdline:
+        return None
+    if _executable_name(cmdline) not in _BROWSER_EXES:
         return None
     if _norm(udd.group(1) or udd.group(2)) != _norm(profile_dir):
         return None

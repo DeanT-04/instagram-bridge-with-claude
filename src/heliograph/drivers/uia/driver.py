@@ -24,6 +24,13 @@ __all__ = ["UiaDriver"]
 class UiaDriver(WriteActions):
     """Drive the Microsoft Store Instagram app through Windows UI Automation."""
 
+    def _refuse_write_control(self, node: Node) -> None:
+        if is_write_control(node, self._snap):
+            raise UnsafeActionError(
+                f"{node.name!r} [{node.ref}] is (or is inside) a write control; use the "
+                "dedicated method (like/save/follow/comment) with confirm=True"
+            )
+
     async def click(
         self,
         ref: str | None = None,
@@ -42,11 +49,7 @@ class UiaDriver(WriteActions):
             if ref is None:
                 await self._worker.run(self._snapshot_sync)
             node = self._resolve(ref, name, role, exact)
-            if is_write_control(node):
-                raise UnsafeActionError(
-                    f"{node.name!r} [{node.ref}] is a write control; use the dedicated "
-                    "method (like/save/follow/comment) with confirm=True"
-                )
+            self._refuse_write_control(node)
             if prefer == "mouse":
                 await self.require_foreground()
             try:
@@ -60,6 +63,7 @@ class UiaDriver(WriteActions):
                 await asyncio.sleep(0.5)
                 await self._worker.run(self._snapshot_sync)
                 node = self._resolve(None, name, role, exact)
+                self._refuse_write_control(node)
                 method = await self._worker.run(
                     actions.click, self._handle(node.ref), prefer=prefer
                 )

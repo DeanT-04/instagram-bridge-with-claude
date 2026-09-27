@@ -32,6 +32,7 @@ from heliograph.errors import (
     NotLoggedInError,
     UnsafeActionError,
 )
+from heliograph.instagram.endpoints import is_instagram_url
 
 __all__ = ["UiaCore"]
 
@@ -192,7 +193,7 @@ class UiaCore:
 
     async def navigate_url(self, url: str, *, timeout: float = 20.0) -> dict[str, Any]:
         """Like :meth:`navigate` but returns ``{url, method}`` (method: noop|link|new_window)."""
-        if not url.startswith(_IG_PREFIX):
+        if not url.startswith(_IG_PREFIX) or not is_instagram_url(url):
             raise UnsafeActionError(f"refusing to navigate outside instagram.com: {url!r}")
         async with self._span("navigate", url=url) as s:
             snap = await self._worker.run(self._snapshot_sync)

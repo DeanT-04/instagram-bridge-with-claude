@@ -18,7 +18,7 @@ from typing import Any
 
 from heliograph.config import get_settings
 from heliograph.eye import span
-from heliograph.media.ffmpeg import probe, run
+from heliograph.media.ffmpeg import input_args, output_path, probe, run
 from heliograph.media.frames import format_ts
 
 __all__ = [
@@ -97,8 +97,8 @@ def extract_audio(video: Path, wav: Path, *, timeout: float = 600) -> Path | Non
     wav.parent.mkdir(parents=True, exist_ok=True)
     run(
         "ffmpeg",
-        ["-hide_banner", "-nostdin", "-y", "-i", str(video), "-vn", "-sn", "-dn",
-         "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(wav)],
+        ["-hide_banner", "-nostdin", "-y", *input_args(video), "-vn", "-sn", "-dn",
+         "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", output_path(wav)],
         timeout=timeout,
         op="audio",
     )

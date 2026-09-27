@@ -54,11 +54,11 @@ def test_feed_posts() -> None:
 def test_reel_posts_use_video_player_segments() -> None:
     s = snap(reels_tree())
     posts = read.visible_posts(s, visible_only=False)
-    assert [p["author"] for p in posts] == ["howblooper", "_heyclicky"]
+    assert [p["author"] for p in posts] == ["creator.one", "_creator_two"]
     first = posts[0]
-    assert first["caption"] == "Psych is a comedy"
+    assert first["caption"] == "A synthetic comedy clip"
     assert (first["like_count"], first["comment_count"]) == (2869, 12)
-    assert first["permalink"] == IG + "reels/Ddenr6/"  # from URL: only on-screen reel
+    assert first["permalink"] == IG + "reels/DSynth01/"  # from URL: only on-screen reel
     assert posts[1]["permalink"] is None and posts[1]["comment_count"] == 11
 
 
