@@ -6,7 +6,7 @@ import os
 import shutil
 import sys
 from collections.abc import Callable
-from pathlib import Path
+from pathlib import PureWindowsPath
 
 from heliograph.detect.models import BrowserInfo
 from heliograph.eye import span
@@ -64,7 +64,7 @@ def _windows_candidates(channel: str) -> list[tuple[str, str]]:
     roots = [os.environ.get(v) for v in ("PROGRAMFILES(X86)", "PROGRAMFILES", "LOCALAPPDATA")]
     for root in filter(None, roots):
         for rel in _WIN_REL[channel]:
-            out.append((str(Path(root) / rel), "common-location"))
+            out.append((str(PureWindowsPath(root) / rel), "common-location"))
     return out
 
 

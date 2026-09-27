@@ -24,7 +24,7 @@ def _which(name: str) -> str | None:
     """
     if sys.platform != "win32" or os.path.dirname(name):
         return shutil.which(name)
-    for entry in os.environ.get("PATH", "").split(os.pathsep):
+    for entry in os.environ.get("PATH", "").split(";"):  # Windows PATH separator
         entry = entry.strip().strip('"')
         if entry and os.path.isabs(entry):
             found = shutil.which(os.path.join(entry, name))
