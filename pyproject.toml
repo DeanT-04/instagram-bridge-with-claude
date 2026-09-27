@@ -60,6 +60,7 @@ testpaths = ["tests"]
 asyncio_mode = "auto"
 markers = [
     "live: tests that touch the real device, network or Instagram (deselect with -m 'not live')",
+    "slow: tests that download/run ML models (e.g. Whisper); deselect with -m 'not slow'",
 ]
 addopts = "-m 'not live'"
 
