@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "heliograph": {
+      "type": "stdio",
+      "command": "uv",
+      "args": ["run", "--quiet", "heliograph", "mcp"]
+    }
+  }
+}

@@ -4,14 +4,16 @@ from __future__ import annotations
 
 import json
 import sys
-from typing import Annotated
+from typing import Annotated, NoReturn
 
 import typer
 from rich.console import Console
 from rich.table import Table
 
 from heliograph import __version__, eye
-from heliograph.detect import EnvironmentReport, detect_environment
+from heliograph.commands.doctor import render_report
+from heliograph.detect import detect_environment
+from heliograph.errors import HeliographError
 
 app = typer.Typer(
     name="heliograph",
@@ -48,50 +50,6 @@ def version() -> None:
     console.print(f"heliograph {__version__}")
 
 
-def _ffmpeg_hint(os_name: str) -> str:
-    return {
-        "windows": "winget install Gyan.FFmpeg",
-        "macos": "brew install ffmpeg",
-    }.get(os_name, "sudo apt install ffmpeg (or your distro's package)")
-
-
-def _doctor_rows(r: EnvironmentReport) -> list[tuple[bool | None, str, str, str]]:
-    """(status, check, detail, hint) rows; status None = not applicable / informational."""
-    app_ = r.instagram_app
-    rows: list[tuple[bool | None, str, str, str]] = [
-        (True, "OS", f"{r.os} — {r.os_version}", ""),
-        (True, "Python", r.python_version, ""),
-    ]
-    if app_.supported:
-        rows.append((app_.installed, "Instagram Store app",
-                     f"{app_.name} {app_.version} ({app_.aumid})" if app_.installed
-                     else (app_.reason or "not installed"),
-                     "" if app_.installed else "heliograph setup  (opens the Microsoft Store)"))
-        if app_.installed:
-            rows.append((app_.window_open, "Instagram window open",
-                         app_.window_title or (app_.reason or "no window found"),
-                         "" if app_.window_open else "optional: open Instagram from Start"))
-    else:
-        rows.append((None, "Instagram Store app", app_.reason or "n/a", ""))
-    best = r.preferred_browser
-    rows.append((best is not None, "Browser (Edge/Chrome)",
-                 ", ".join(f"{b.channel}: {b.path}" for b in r.browsers) or "none found",
-                 "" if best else "install Microsoft Edge or Google Chrome"))
-    rows.append((r.playwright.importable, "playwright",
-                 r.playwright.version or (r.playwright.reason or ""),
-                 "" if r.playwright.importable else "uv sync"))
-    if r.os == "windows":
-        rows.append((r.uiautomation.importable, "uiautomation",
-                     r.uiautomation.version or (r.uiautomation.reason or ""),
-                     "" if r.uiautomation.importable else "uv sync"))
-    for tool in (r.ffmpeg, r.ffprobe):
-        rows.append((tool.found, tool.name, tool.version or (tool.reason or ""),
-                     "" if tool.found else _ffmpeg_hint(r.os)))
-    rows.append((r.browser_profile_initialized, "CDP browser profile", r.browser_profile_dir,
-                 "" if r.browser_profile_initialized else "heliograph login  (one-time sign-in)"))
-    return rows
-
-
 @app.command()
 def doctor(
     as_json: Annotated[bool, typer.Option("--json", help="Print the raw report as JSON.")] = False,
@@ -101,15 +59,7 @@ def doctor(
     if as_json:
         typer.echo(json.dumps(report.model_dump(mode="json"), indent=2))
     else:
-        table = Table(title=f"Heliograph {__version__} — doctor", show_lines=False)
-        table.add_column("", width=2)
-        table.add_column("check", style="bold")
-        table.add_column("detail", overflow="fold")
-        table.add_column("fix", style="yellow", overflow="fold")
-        for status, check, detail, hint in _doctor_rows(report):
-            mark = {True: "[green]✓[/]", False: "[red]✗[/]", None: "[dim]–[/]"}[status]
-            table.add_row(mark, check, detail, hint)
-        console.print(table)
+        render_report(report, console)
         if report.ok:
             console.print("[green]Ready.[/] Nothing critical is missing.")
         else:
@@ -156,36 +106,77 @@ def eye_report(
                       f"[dim]trace={(e.trace_id or '')[:8]}[/]")
 
 
-def _not_implemented(command: str) -> None:
-    console.print(f"[yellow]`heliograph {command}` is not yet implemented.[/]")
-    raise typer.Exit(code=2)
+def _fail(exc: HeliographError) -> NoReturn:
+    console.print(f"[red]{type(exc).__name__}:[/] {exc.message or exc}")
+    if exc.hint:
+        console.print(f"[yellow]Hint:[/] {exc.hint}")
+    raise typer.Exit(code=1)
 
 
-# --- Stubs: to be implemented by the driver / media / MCP engineers. -----------------------
-
-
-@app.command()
-def setup() -> None:
-    """[stub] One-time setup: install the Instagram app, browser profile, models."""
-    _not_implemented("setup")
+Account = Annotated[str, typer.Option("--account", help="Browser-profile account key.")]
 
 
 @app.command()
-def login() -> None:
-    """[stub] Open the dedicated browser profile so you can sign in to Instagram once."""
-    _not_implemented("login")
+def setup(
+    with_whisper: Annotated[bool, typer.Option(
+        "--with-whisper", help="Also pre-download the Whisper speech model.")] = False,
+    yes: Annotated[bool, typer.Option("--yes", "-y", help="Answer yes to every prompt.")] = False,
+    no_input: Annotated[bool, typer.Option(
+        "--no-input", help="Never prompt (answer no); for scripts/CI.")] = False,
+) -> None:
+    """One-time setup: check the machine, explain fixes, offer the Store app and models."""
+    from heliograph.commands.setup import run_setup
+
+    raise typer.Exit(code=run_setup(console, with_whisper=with_whisper, assume_yes=yes,
+                                    no_input=no_input))
 
 
 @app.command()
-def mcp() -> None:
-    """[stub] Run the Heliograph MCP server (stdio) for Claude."""
-    _not_implemented("mcp")
+def login(
+    account: Account = "default",
+    timeout: Annotated[float, typer.Option(help="Seconds to wait for you to sign in.")] = 300,
+) -> None:
+    """Open the dedicated browser profile so you can sign in to Instagram once, by hand."""
+    from heliograph.commands.login import run_login
+
+    try:
+        ok = run_login(console, account=account, timeout=timeout)
+    except HeliographError as exc:
+        _fail(exc)
+    if not ok:
+        raise typer.Exit(code=1)
 
 
 @app.command()
-def extract(url: Annotated[str, typer.Argument(help="Reel/post URL.")]) -> None:
-    """[stub] Build a dossier (video, transcript, keyframes) for a reel or post."""
-    _not_implemented("extract")
+def mcp(account: Account = "default") -> None:
+    """Run the Heliograph MCP server over stdio (Claude Code starts this for you)."""
+    from heliograph.mcp import run_stdio
+
+    run_stdio(account)
+
+
+@app.command()
+def extract(
+    ref: Annotated[str | None, typer.Argument(
+        help="Reel/post URL or shortcode.", show_default=False)] = None,
+    collection: Annotated[str | None, typer.Option(
+        "--collection", "-c", help='Saved collection name or id, e.g. "Trading strats".')] = None,
+    limit: Annotated[int, typer.Option(help="Max items from the collection.")] = 20,
+    no_transcript: Annotated[bool, typer.Option(
+        "--no-transcript", help="Skip speech-to-text.")] = False,
+    force: Annotated[bool, typer.Option(
+        "--force", help="Rebuild every stage even if outputs exist.")] = False,
+    account: Account = "default",
+) -> None:
+    """Build dossiers (video, keyframes, transcript) for a reel/post or a whole collection."""
+    from heliograph.commands.extract import run_extract
+
+    try:
+        code = run_extract(console, ref=ref, collection=collection, limit=limit,
+                           transcript=not no_transcript, force=force, account=account)
+    except HeliographError as exc:
+        _fail(exc)
+    raise typer.Exit(code=code)
 
 
 if __name__ == "__main__":  # pragma: no cover

@@ -60,9 +60,3 @@ def test_eye_report_and_tail() -> None:
     assert json.loads(result.output)["errors"] == 1
     result = runner.invoke(cli.app, ["eye", "--no-follow"])
     assert result.exit_code == 0 and "x.fail" in result.output
-
-
-@pytest.mark.parametrize("cmd", [["setup"], ["login"], ["mcp"], ["extract", "https://x"]])
-def test_stubs(cmd: list[str]) -> None:
-    result = runner.invoke(cli.app, cmd)
-    assert result.exit_code == 2 and "not yet implemented" in result.output
