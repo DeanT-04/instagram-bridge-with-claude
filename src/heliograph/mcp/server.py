@@ -59,6 +59,7 @@ def build_server(runtime: Runtime | None = None) -> FastMCP:
 
     @asynccontextmanager
     async def lifespan(_: FastMCP) -> AsyncIterator[dict[str, Any]]:
+        rt.start_idle_watch()
         try:
             yield {}
         finally:

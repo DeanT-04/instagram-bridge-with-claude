@@ -33,3 +33,19 @@ def test_setup_sh_help_prints_exactly_the_header_comment() -> None:
     assert all(line.startswith("#") for line in shown)
     assert not lines[last].startswith("#")  # nothing of the header is cut off
     assert any("--no-input" in line for line in shown)
+
+
+def test_ci_actions_are_pinned_to_full_commit_shas() -> None:
+    uses = [line.split("uses:", 1)[1].strip()
+            for wf in (ROOT / ".github" / "workflows").glob("*.yml")
+            for line in wf.read_text("utf-8").splitlines() if "uses:" in line]
+    assert uses
+    for ref in uses:
+        assert re.fullmatch(r"[\w.-]+/[\w./-]+@[0-9a-f]{40} # v\d+\.\d+\.\d+", ref), ref
+
+
+def test_dependabot_tracks_actions_and_uv() -> None:
+    text = (ROOT / ".github" / "dependabot.yml").read_text("utf-8")
+    assert 'package-ecosystem: "github-actions"' in text
+    assert 'package-ecosystem: "uv"' in text
+    assert text.count('interval: "weekly"') == 2

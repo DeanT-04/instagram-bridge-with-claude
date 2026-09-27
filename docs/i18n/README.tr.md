@@ -272,6 +272,7 @@ Notlar proje klasöründeki `strategies/` dizinine yazılır; kişisel veri oldu
 - **Yazma işlemleri varsayılan olarak denemedir.** Beğenme, takip, yorum, DM, kaydetme ve bunların tersleri yalnızca ne *olacağını* açıklar; sohbette evet dedikten sonra `confirm=true` ile yeniden çağrıldıklarında gerçekleşir. Aynısı canlı uygulamada eylem düğmelerine tıklamak veya metin göndermek için de geçerlidir.
 - **Rastgele sapmalı hız sınırları** hem yazmalarda *hem de* okumalarda uygulanır; kullanım insan temposunda kalır.
 - **Yalnızca yerel veri.** Dosyalar, günlükler ve tarayıcı profili bilgisayarınızda `~/.heliograph` altında, özel dosya izinleriyle kalır. DevTools bağlantı noktası rastgele boş bir portta `127.0.0.1` adresine bağlanır.
+- **Kısa ömürlü tarayıcı.** Özel tarayıcı çalıştığı sürece herhangi bir yerel program DevTools bağlantı noktasını kullanabilir; bu yüzden Heliograph'ın açtığı tarayıcı MCP sunucusu veya CLI komutu kapanınca ve 15 dakika boşta kaldıktan sonra (`HELIOGRAPH_BROWSER_IDLE_MINUTES`, `0` = asla) kapatılır; bir sonraki çağrıda yeniden açılır. CI action'ları commit SHA'larına sabitlenmiştir ve Dependabot tarafından güncel tutulur.
 - **Sıkı izin listeleri** — yalnızca Instagram URL'leri kabul edilir ve indirmeler yalnızca Instagram CDN sunucularından HTTPS ile gelir. Dizin geçişi (path traversal) korumaları API istemcisini ve dosya klasörlerini kapsar.
 
 Tehdit modeli ve güvenlik açığı bildirme yolu için [docs/SECURITY.md](../SECURITY.md) dosyasına bakın.

@@ -83,8 +83,9 @@ class FakeDriver:
         self.login_called = True
         return self.logged_in_after
 
-    async def close(self) -> None:
+    async def shutdown(self) -> bool:
         self.closed = True
+        return True
 
 
 @pytest.mark.parametrize("ok", [True, False])

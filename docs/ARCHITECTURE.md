@@ -90,4 +90,7 @@ Local-first; no external service required.
   taller than 200 px) unless `allow_large`.
 - Downloads only from allow-listed Instagram CDN hosts over HTTPS.
 - DevTools port bound to 127.0.0.1, random free port, recorded in `~/.heliograph/state.json`.
+- A browser Heliograph launched is closed when the MCP server (or `login`/`extract`) exits and, in
+  the server, after `browser_idle_minutes` (default 15) without tool calls; the next `ig_*` call
+  relaunches it. A browser that was already running is only detached from, never closed.
 - No credentials are ever typed, stored or logged by Heliograph.

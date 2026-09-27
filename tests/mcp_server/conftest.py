@@ -36,12 +36,18 @@ class FakeCdp:
         self.account = account
         self.launcher = FakeLauncher()
         self.closed = False
+        self.shutdowns = 0
 
     async def connect(self) -> None:
         raise AssertionError("tests must not connect a browser")
 
     async def close(self) -> None:
         self.closed = True
+
+    async def shutdown(self) -> bool:
+        self.closed = True
+        self.shutdowns += 1
+        return True
 
     async def current_url(self) -> str | None:
         return None

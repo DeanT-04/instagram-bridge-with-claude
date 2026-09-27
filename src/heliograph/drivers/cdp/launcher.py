@@ -4,6 +4,13 @@ The browser runs as an ``--app=`` window so it looks like the Instagram app. One
 directory exists per Instagram account: the default account uses
 ``settings.browser_profile_dir``; any other account ``<home>/profiles/<account>``.
 The chosen port is recorded in ``<home>/state.json`` under ``"cdp"``.
+
+While it runs, the DevTools port lets any *local* process drive the logged-in session, so
+the launcher remembers whether it started the browser itself (:attr:`launched_port`) and
+:meth:`BrowserLauncher.stop_if_launched` closes only such a browser. Web pages cannot use
+the port: DevTools is bound to 127.0.0.1, Chromium rejects WebSocket connections that carry
+an ``Origin`` unless ``--remote-allow-origins`` allows it (never passed here, see
+:data:`FORBIDDEN_ARGS`) and its HTTP endpoints send no CORS headers.
 """
 
 from __future__ import annotations
@@ -24,11 +31,20 @@ from heliograph.drivers.cdp.devtools import CdpEndpoint
 from heliograph.errors import BrowserNotFoundError, DriverUnavailableError
 from heliograph.eye import span
 
-__all__ = ["DEFAULT_ACCOUNT", "INSTAGRAM_URL", "BrowserLauncher", "find_browser_executable"]
+__all__ = [
+    "DEFAULT_ACCOUNT",
+    "FORBIDDEN_ARGS",
+    "INSTAGRAM_URL",
+    "BrowserLauncher",
+    "find_browser_executable",
+]
 
 DEFAULT_ACCOUNT = "default"
 INSTAGRAM_URL = "https://www.instagram.com/"
 _ACCOUNT_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
+# Launch-argument fragments that would widen DevTools access beyond local, origin-less
+# clients (Playwright): any web origin, or a non-loopback interface.
+FORBIDDEN_ARGS = ("--remote-allow-origins", "0.0.0.0", "--remote-debugging-address=::")
 
 
 def _playwright_chromium() -> str | None:
@@ -83,6 +99,8 @@ class BrowserLauncher:
     settings: Settings = field(default_factory=get_settings)
     popen: Callable[..., object] = subprocess.Popen
     start_timeout: float = 30.0
+    #: DevTools port of the browser *this* launcher started (None if it only reused one).
+    launched_port: int | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         if not _ACCOUNT_RE.match(self.account):
@@ -165,6 +183,7 @@ class BrowserLauncher:
                 ep = devtools.probe_endpoint(port, timeout=1.0)
                 if ep:
                     s.set(browser=ep.browser)
+                    self.launched_port = port
                     return self._record(ep, pid=getattr(proc, "pid", None), channel=channel)
                 time.sleep(0.5)
             raise DriverUnavailableError(
@@ -173,10 +192,26 @@ class BrowserLauncher:
                 hint="Close other windows using this profile and retry.",
             )
 
-    def stop(self) -> bool:
+    def stop_if_launched(self) -> bool:
+        """Close the browser only if this launcher started it (and it still runs on the
+        port it was started with); a reused, already-running browser is left alone.
+
+        Returns True if a process was signalled.
+        """
+        port, self.launched_port = self.launched_port, None
+        if port is None:
+            return False
+        with span("cdp.stop_if_launched", account=self.account, port=port) as s:
+            proc = devtools.find_browser_process(self.profile_dir)
+            if proc is None or proc.port != port:
+                s.set(found=False)  # already gone, or replaced by someone else's launch
+                return False
+            return self.stop(proc)
+
+    def stop(self, proc: devtools.BrowserProcess | None = None) -> bool:
         """Close the browser for this profile. Returns True if a process was signalled."""
         with span("cdp.stop", account=self.account) as s:
-            proc = devtools.find_browser_process(self.profile_dir)
+            proc = proc or devtools.find_browser_process(self.profile_dir)
             if proc is None:
                 s.set(found=False)
                 return False

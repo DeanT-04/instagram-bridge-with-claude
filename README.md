@@ -268,6 +268,7 @@ Notes are written to `strategies/` in the project folder, which is git-ignored b
 - **Write actions dry-run by default.** Like, follow, comment, DM, save and their reverses return a description of what *would* happen; they only act when called again with `confirm=true`, after you said yes in chat. The same goes for clicking action buttons or submitting text in the live app.
 - **Rate limits with jitter** on writes *and* reads, to keep usage human-paced.
 - **Local-only data.** Dossiers, logs and the browser profile stay under `~/.heliograph` on your machine, with private file permissions. The DevTools port binds to `127.0.0.1` on a random free port.
+- **Short-lived browser.** While the dedicated browser runs, any local program could use its DevTools port, so a browser Heliograph opened is closed when the MCP server or CLI command exits, and after 15 idle minutes (`HELIOGRAPH_BROWSER_IDLE_MINUTES`, `0` = never); it reopens on the next call. CI actions are pinned to commit SHAs and kept current by Dependabot.
 - **Strict allow-lists** — only Instagram URLs are accepted, and downloads only come over HTTPS from Instagram's CDN hosts. Path-traversal guards protect the API client and dossier folders.
 
 See [docs/SECURITY.md](docs/SECURITY.md) for the threat model and how to report a vulnerability.

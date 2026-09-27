@@ -69,6 +69,11 @@ class Settings(BaseSettings):
 
     cdp_port: int = Field(default=0, ge=0, le=65535, description="0 = random free port")
     browser_channel: BrowserChannel = "auto"
+    browser_idle_minutes: float = Field(
+        default=15, ge=0,
+        description="MCP server: close the browser it launched after this many idle minutes "
+        "(0 = never); it is relaunched on the next Instagram tool call",
+    )
     whisper_model: str = "small"
     whisper_model_non_english: str = Field(
         default="medium",

@@ -1,8 +1,9 @@
 """``CdpDriver``: the browser (Chrome DevTools Protocol) implementation of InstagramDriver.
 
 Attaches with Playwright's ``connect_over_cdp`` to the dedicated profile started by
-:class:`~heliograph.drivers.cdp.launcher.BrowserLauncher`. Closing the driver only
-disconnects; the browser window (and the user's session) stays open.
+:class:`~heliograph.drivers.cdp.launcher.BrowserLauncher`. :meth:`CdpDriver.close` only
+disconnects; :meth:`CdpDriver.shutdown` also closes the browser if this driver launched it
+(its DevTools port would otherwise stay open to local processes).
 """
 
 from __future__ import annotations
@@ -149,6 +150,18 @@ class CdpDriver:
                 await self._pw.stop()  # drops the CDP connection; browser keeps running
             self._pw = self._browser = self._page = None
             self._api = None
+
+    async def shutdown(self) -> bool:
+        """Disconnect, then close the browser if (and only if) this driver launched it.
+
+        A browser that was already running (reused) is left open. Returns True if a
+        browser process was signalled.
+        """
+        await self.close()
+        with span("cdp.shutdown", account=self.account) as s:
+            stopped = await asyncio.to_thread(self.launcher.stop_if_launched)
+            s.set(stopped=stopped)
+            return stopped
 
     # -- InstagramDriver -----------------------------------------------------------
     async def current_url(self) -> str | None:

@@ -21,12 +21,16 @@ async def _login(driver: Any, console: Console, timeout: float) -> bool:
         with console.status(f"Waiting for you to finish signing in (up to {timeout:.0f}s)…"):
             return bool(await driver.login_interactive(timeout=timeout))
     finally:
-        await driver.close()
+        await driver.shutdown()  # closes the browser only if we opened it
 
 
 def run_login(console: Console, *, account: str = "default", timeout: float = 300.0,
               driver: Any = None) -> bool:
-    """Return True once the profile is logged in (the browser window stays open)."""
+    """Return True once the profile is logged in.
+
+    A browser window this command opened is closed on exit (its DevTools port should not
+    outlive the command); one that was already open is left alone.
+    """
     if driver is None:
         from heliograph.drivers.cdp import CdpDriver
 

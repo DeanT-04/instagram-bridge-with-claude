@@ -272,6 +272,7 @@ Die Notizen landen in `strategies/` im Projektordner, der von git ignoriert wird
 - **Schreibende Aktionen sind standardmäßig nur Probeläufe.** Liken, Folgen, Kommentieren, DMs, Speichern und ihre Umkehrungen beschreiben nur, was *passieren würde*; sie handeln erst, wenn sie nach deinem Ja im Chat erneut mit `confirm=true` aufgerufen werden. Dasselbe gilt für Klicks auf Aktions-Buttons oder das Absenden von Text in der Live-App.
 - **Ratenbegrenzung mit Jitter** für Schreib- *und* Lesezugriffe, damit die Nutzung menschlich getaktet bleibt.
 - **Nur lokale Daten.** Dossiers, Logs und das Browserprofil bleiben unter `~/.heliograph` auf deinem Rechner, mit privaten Dateiberechtigungen. Der DevTools-Port ist an `127.0.0.1` auf einem zufälligen freien Port gebunden.
+- **Kurzlebiger Browser.** Solange der eigene Browser läuft, könnte jedes lokale Programm seinen DevTools-Port nutzen. Deshalb wird ein von Heliograph geöffneter Browser geschlossen, wenn der MCP-Server oder der CLI-Befehl endet, sowie nach 15 Minuten Leerlauf (`HELIOGRAPH_BROWSER_IDLE_MINUTES`, `0` = nie); beim nächsten Aufruf öffnet er sich wieder. CI-Actions sind auf Commit-SHAs gepinnt und werden von Dependabot aktuell gehalten.
 - **Strikte Allowlists** — nur Instagram-URLs werden akzeptiert, und Downloads kommen ausschließlich per HTTPS von Instagrams CDN-Hosts. Schutz vor Path-Traversal sichert den API-Client und die Dossier-Ordner ab.
 
 Das Bedrohungsmodell und wie du eine Schwachstelle meldest, findest du in [docs/SECURITY.md](../SECURITY.md).

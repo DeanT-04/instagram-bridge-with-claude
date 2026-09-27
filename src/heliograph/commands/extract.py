@@ -69,7 +69,7 @@ async def _extract(
                 console.print(f"{label} [red]✗ {type(exc).__name__}: {exc}[/]")
     finally:
         if driver is not None:
-            await driver.close()
+            await driver.shutdown()  # closes the browser only if we opened it
     return results
 
 
