@@ -41,3 +41,29 @@ def make_video(path: Path, *, audio: bool = True) -> Path:
     args += ["-t", "4", "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p", str(path)]
     subprocess.run(args, check=True, timeout=120, capture_output=True)
     return path
+
+
+def make_text_video(path: Path, texts: list[str], *, seconds_each: float = 2.0) -> Path:
+    """A silent 640x360 video showing each of ``texts`` (big black on white) in turn,
+    built from PIL-drawn frames - for OCR tests."""
+    from PIL import Image, ImageDraw, ImageFont
+
+    exe = _ffmpeg()
+    work = path.parent / f"{path.stem}_slides"
+    work.mkdir(parents=True, exist_ok=True)
+    try:
+        font: ImageFont.FreeTypeFont | ImageFont.ImageFont = ImageFont.load_default(size=26)
+    except TypeError:  # pragma: no cover - Pillow < 10.1
+        font = ImageFont.load_default()
+    for i, text in enumerate(texts):
+        img = Image.new("RGB", (640, 360), "white")
+        draw = ImageDraw.Draw(img)
+        draw.rectangle((0, 250, 640, 360), fill=(20, 20, 40))  # a "chart" band
+        draw.text((12, 120), text, fill="black", font=font)
+        img.save(work / f"s{i:03d}.png")
+    subprocess.run(
+        [exe, "-hide_banner", "-loglevel", "error", "-y", "-framerate", f"1/{seconds_each}",
+         "-i", str(work / "s%03d.png"), "-vf", "fps=10,format=yuv420p", "-c:v", "libx264",
+         "-preset", "ultrafast", str(path)],
+        check=True, timeout=120, capture_output=True)
+    return path

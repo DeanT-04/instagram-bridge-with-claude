@@ -34,6 +34,20 @@ dependencies = [
 [project.scripts]
 heliograph = "heliograph.cli:app"
 
+[project.optional-dependencies]
+ocr = [
+    "rapidocr-onnxruntime>=1.4.4",
+]
+ocr-windows = [
+    "winrt-windows-foundation>=2 ; sys_platform == 'win32'",
+    "winrt-windows-foundation-collections>=2 ; sys_platform == 'win32'",
+    "winrt-windows-globalization>=2 ; sys_platform == 'win32'",
+    "winrt-windows-graphics-imaging>=2 ; sys_platform == 'win32'",
+    "winrt-windows-media-ocr>=2 ; sys_platform == 'win32'",
+    "winrt-windows-security-cryptography>=2 ; sys_platform == 'win32'",
+    "winrt-windows-storage-streams>=2 ; sys_platform == 'win32'",
+]
+
 [dependency-groups]
 dev = [
     "pytest>=8.2",

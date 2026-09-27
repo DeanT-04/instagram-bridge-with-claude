@@ -58,8 +58,16 @@ def _by_code(code: str, root: Path) -> Path:
     return matches[0]
 
 
+def _ocr_texts(folder: Path) -> dict[int, str]:
+    from heliograph.media.ocr import load_ocr
+
+    result = load_ocr(folder / "frames")
+    return {f.index: f.text for f in result.frames if f.lines} if result else {}
+
+
 def load_frames(folder: Path) -> list[dict[str, Any]]:
-    """Frame index (``index``, ``time_s``, ``timestamp``, absolute ``path``) of a dossier."""
+    """Frame index (``index``, ``time_s``, ``timestamp``, absolute ``path`` and, when
+    ``frames/ocr.json`` exists, the OCR'd on-screen ``text``) of a dossier."""
     index = folder / "frames" / "frames.json"
     if not index.is_file():
         return []
@@ -68,6 +76,7 @@ def load_frames(folder: Path) -> list[dict[str, Any]]:
     except ValueError:
         return []
     out: list[dict[str, Any]] = []
+    texts = _ocr_texts(folder)
     for d in items if isinstance(items, list) else []:
         try:
             t = float(d["time_s"])
@@ -75,8 +84,12 @@ def load_frames(folder: Path) -> list[dict[str, Any]]:
         except (KeyError, TypeError, ValueError):
             continue
         m, s = divmod(int(max(0.0, t)), 60)
-        out.append({"index": int(d.get("index", len(out) + 1)), "time_s": round(t, 2),
-                    "timestamp": d.get("timestamp") or f"{m:02d}:{s:02d}", "path": str(path)})
+        idx = int(d.get("index", len(out) + 1))
+        item = {"index": idx, "time_s": round(t, 2),
+                "timestamp": d.get("timestamp") or f"{m:02d}:{s:02d}", "path": str(path)}
+        if idx in texts:
+            item["text"] = texts[idx]
+        out.append(item)
     return out
 
 
@@ -92,6 +105,8 @@ def dossier_files(folder: Path) -> dict[str, Any]:
         "transcript_md": str(folder / "transcript.md")
         if (folder / "transcript.md").is_file() else None,
         "video": str(folder / "video.mp4") if (folder / "video.mp4").is_file() else None,
+        "ocr": str(folder / "frames" / "ocr.json")
+        if (folder / "frames" / "ocr.json").is_file() else None,
         "contact_sheet": str(sheet) if sheet.is_file() else None,
         "images": [str(p) for p in images],
     }
@@ -104,8 +119,8 @@ def summarize_dossier(folder: Path, *, md_chars: int | None = 20000) -> dict[str
     truncated = md_chars is not None and md_chars > 0 and len(text) > md_chars
     out: dict[str, Any] = {
         **{k: v for k, v in dossier_files(folder).items() if v not in (None, [])},
-        "frames": [{k: f[k] for k in ("index", "timestamp", "time_s", "path")}
-                   for f in load_frames(folder)],
+        "frames": [{k: f[k] for k in ("index", "timestamp", "time_s", "path", "text")
+                    if k in f} for f in load_frames(folder)],
         "dossier_md_text": text[:md_chars] if truncated and md_chars else text,
     }
     if truncated:

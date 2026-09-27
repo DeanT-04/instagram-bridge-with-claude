@@ -8,7 +8,17 @@ from typing import Any
 
 from rich.console import Console
 
-__all__ = ["run_extract"]
+__all__ = ["format_timings", "run_extract"]
+
+
+def format_timings(timings: dict[str, float], skipped: list[str]) -> str:
+    """One line of per-stage seconds, e.g. ``download 1.2s | frames 3.4s | ... | total``."""
+    parts = [f"{k} {v:.1f}s" for k, v in timings.items() if k != "total"]
+    if "total" in timings:
+        parts.append(f"total {timings['total']:.1f}s")
+    if skipped:
+        parts.append("reused: " + ", ".join(skipped))
+    return " | ".join(parts)
 
 
 async def _service(account: str) -> tuple[Any, Any]:
@@ -51,6 +61,9 @@ async def _extract(
                                              whisper_model=settings.whisper_model)
                 results.append(("built", str(d.markdown_path)))
                 console.print(f"{label} [green]✓[/] {d.markdown_path}")
+                timings = format_timings(getattr(d, "timings", {}), getattr(d, "skipped", []))
+                if timings:
+                    console.print(f"    [dim]{timings}[/]")
             except Exception as exc:
                 results.append(("error", f"{media.code}: {exc}"))
                 console.print(f"{label} [red]✗ {type(exc).__name__}: {exc}[/]")

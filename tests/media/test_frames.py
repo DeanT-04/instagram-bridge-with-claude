@@ -34,7 +34,7 @@ def test_format_ts() -> None:
 
 def test_extract_keyframes(video: Path, tmp_path: Path) -> None:
     out = tmp_path / "frames"
-    frames = extract_keyframes(video, out, max_height=120)
+    frames = extract_keyframes(video, out, max_side=120)
     assert len(frames) >= 2  # the first frame and the hard cut at 2 s
     times = [f.time_s for f in frames]
     assert times == sorted(times) and times[0] == 0.0
@@ -42,7 +42,7 @@ def test_extract_keyframes(video: Path, tmp_path: Path) -> None:
     assert [f.index for f in frames] == list(range(1, len(frames) + 1))
     for f in frames:
         with Image.open(f.path) as img:
-            assert img.format == "JPEG" and img.height == 120
+            assert img.format == "JPEG" and img.size == (120, 90)
     assert not (out / ".raw").exists()
     index = json.loads((out / INDEX_NAME).read_text("utf-8"))
     assert [d["time_s"] for d in index] == times

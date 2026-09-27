@@ -179,5 +179,52 @@ def extract(
     raise typer.Exit(code=code)
 
 
+dossier_app = typer.Typer(help="Read built dossiers: dossier.md, keyframes, zoomed crops.")
+app.add_typer(dossier_app, name="dossier")
+DossierRef = Annotated[str, typer.Argument(help="Shortcode, post URL or dossier folder.")]
+
+
+@dossier_app.command("show")
+def dossier_show(
+    ref: DossierRef,
+    transcript: Annotated[bool, typer.Option(
+        "--transcript", help="Also print transcript.md.")] = False,
+) -> None:
+    """Print a dossier's dossier.md (caption, detected terms, speech/frame/OCR timeline)."""
+    from heliograph.commands.dossier import run_show
+
+    try:
+        raise typer.Exit(code=run_show(console, ref, transcript=transcript))
+    except HeliographError as exc:
+        _fail(exc)
+
+
+@dossier_app.command("frames")
+def dossier_frames(
+    ref: DossierRef,
+    frame: Annotated[list[int] | None, typer.Option(
+        "--frame", "-f", help="Frame index (repeatable).")] = None,
+    crop: Annotated[str | None, typer.Option(
+        help='Zoom region: preset (top, bottom-left, middle-third...) or "x0,y0,x1,y1" '
+             "fractions/pixels.")] = None,
+    scale: Annotated[float | None, typer.Option(help="Zoom factor (default: auto).")] = None,
+    ocr: Annotated[bool, typer.Option("--ocr", help="OCR each crop.")] = False,
+    open_files: Annotated[bool, typer.Option(
+        "--open", help="Open the images in the default viewer.")] = False,
+) -> None:
+    """List keyframes with timestamps and on-screen text, or write zoomed crops (--crop)."""
+    from heliograph.commands.dossier import run_frames
+
+    try:
+        code = run_frames(console, ref, frames=frame or [], crop=crop, scale=scale, ocr=ocr,
+                          open_files=open_files)
+    except (HeliographError, ValueError) as exc:
+        if isinstance(exc, HeliographError):
+            _fail(exc)
+        console.print(f"[red]{exc}[/]")
+        raise typer.Exit(code=1) from exc
+    raise typer.Exit(code=code)
+
+
 if __name__ == "__main__":  # pragma: no cover
     app()

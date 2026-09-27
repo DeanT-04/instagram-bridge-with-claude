@@ -11,7 +11,7 @@ Design: `docs/ARCHITECTURE.md`. Security model: `docs/SECURITY.md`.
 | Status | `heliograph_status`, `heliograph_setup_check` | environment detection |
 | Read | `ig_whoami`, `ig_get_user`, `ig_user_posts`, `ig_get_media`, `ig_comments`, `ig_search`, `ig_timeline`, `ig_reels_feed`, `ig_explore`, `ig_inbox`, `ig_thread`, `ig_activity` | CDP driver: a dedicated Edge/Chrome profile + Instagram's web API |
 | Collections | `ig_list_collections`, `ig_collection_posts`, `ig_saved_posts` | CDP |
-| Extract | `ig_extract_media`, `ig_extract_collection`, `ig_read_dossier`, `ig_view_frames` | CDP + ffmpeg + faster-whisper → dossier folders in `~/.heliograph/dossiers/<owner>/<code>/` |
+| Extract | `ig_extract_media`, `ig_extract_collection`, `ig_read_dossier`, `ig_view_frames` | CDP + ffmpeg + faster-whisper (+ optional OCR: `uv sync --extra ocr`) → dossier folders in `~/.heliograph/dossiers/<owner>/<code>/` |
 | Live app (Windows) | `app_open`, `app_snapshot`, `app_screenshot`, `app_navigate`, `app_click`, `app_scroll`, `app_type`, `app_visible_posts`, `app_badges` | UIA driver: the user's installed Microsoft Store Instagram app |
 | Write | `ig_like`, `ig_unlike`, `ig_save`, `ig_unsave`, `ig_follow`, `ig_unfollow`, `ig_comment`, `ig_send_dm` | CDP, confirm-gated |
 | Eye | `eye_report`, `eye_trace`, `eye_recent` | Heliograph's local traces |
@@ -38,8 +38,9 @@ Listing tools take `limit` and `cursor`; pass `next_cursor` back to page on.
 Use the project skill `.claude/skills/extract-trading-strategies/SKILL.md`. In short:
 `ig_list_collections` → `ig_collection_posts("Trading strats")` → `ig_extract_media(code)`
 (or `ig_extract_collection` in small batches) → read `dossier_md_text` / `ig_read_dossier`
-(caption + timestamped transcript + keyframe timeline) → `ig_view_frames` (contact sheet, then
-single frames for chart details, indicator settings, on-screen text) → write
+(caption + timestamped transcript + keyframe/OCR timeline, detected terms, mismatch flag) →
+`ig_view_frames` (contact sheet, then single frames, then `crop=` zooms for small chart
+labels and indicator settings; cross-check speech against on-screen text) → write
 `strategies/<creator>__<code>.md` from the template → update `strategies/README.md`.
 `strategies/` is git-ignored (personal data).
 

@@ -23,6 +23,26 @@ def _evenly(n: int, k: int) -> list[int]:
     return sorted({round(i * (n - 1) / max(1, k - 1)) for i in range(k)})
 
 
+async def _crops(folder: Path, frames: list[int] | None, crop: str, scale: float | None,
+                 ocr: bool, cap: int) -> list[Any]:
+    import asyncio
+
+    from heliograph.extract.zoom import crop_frame
+
+    if not frames:
+        raise ValueError("crop needs `frames` (frame indices to zoom into)")
+    content: list[Any] = []
+    labels: list[str] = []
+    for i in frames[:cap]:
+        c = await asyncio.to_thread(crop_frame, folder, i, crop, scale=scale, ocr=ocr)
+        label = f"frame #{i} crop {c.box} x{c.scale} -> {c.path.name}"
+        if c.ocr_text is not None:
+            label += f" [OCR: {c.ocr_text or '(no text)'}]"
+        labels.append(label)
+        content.append(Image(path=c.path))
+    return [f"Dossier {folder.name}: " + "; ".join(labels), *content]
+
+
 def register(server: FastMCP, rt: Runtime) -> None:
     """Register the extraction tools."""
 
@@ -39,8 +59,11 @@ def register(server: FastMCP, rt: Runtime) -> None:
     async def ig_extract_media(ref: str, transcript: bool = True, frames: bool = True,
                                force: bool = False, md_chars: int = 20000) -> dict[str, Any]:
         """Build (or reuse) a dossier for one post/reel: downloads the video or images from
-        Instagram's CDN, extracts de-duplicated keyframes + a contact sheet, and a
-        timestamped speech transcript (faster-whisper, runs locally).
+        Instagram's CDN, extracts de-duplicated native-resolution keyframes + a contact
+        sheet, OCR of each keyframe's on-screen text (if an OCR engine is installed), and a
+        timestamped speech transcript (faster-whisper, runs locally; non-English speech is
+        re-run with a bigger model and also translated to English). dossier.md flags a
+        possible caption/content mismatch and lists detected tickers/timeframes/indicators.
 
         `ref` = post/reel URL, shortcode or pk. Returns the dossier folder, the full
         dossier.md text (caption + merged speech/keyframe timeline, trimmed to md_chars),
@@ -110,17 +133,29 @@ def register(server: FastMCP, rt: Runtime) -> None:
 
     @tool(server, annotations=LOCAL)
     async def ig_view_frames(dossier: str, frames: list[int] | None = None,
-                             contact_sheet: bool = True, max_images: int = 6) -> list[Any]:
+                             contact_sheet: bool = True, max_images: int = 6,
+                             crop: str | None = None, scale: float | None = None,
+                             ocr: bool = False) -> list[Any]:
         """Show dossier images so you can SEE them: the contact sheet (every keyframe tiled
         and labelled `#n mm:ss`) and/or specific keyframes by their frame index (from
-        the frame list / dossier.md). Use single frames to read small on-screen text,
-        chart axes and indicator settings.
+        the frame list / dossier.md). Frames are native resolution; use single frames to
+        read on-screen text, chart axes and indicator settings.
+
+        Zoom: pass `crop` with `frames` to see only a region, upscaled so tiny chart
+        labels become legible. `crop` = a preset (top, bottom, left, right, center,
+        top-left, top-right, bottom-left, bottom-right, top-third, middle-third,
+        bottom-third) or "x0,y0,x1,y1" as fractions of the frame (e.g. "0.6,0.3,1,0.45"
+        for the right-hand price axis) or pixels. `scale` forces the zoom factor
+        (default: up to 4x, ~1600 px). `ocr=true` also returns machine OCR of each crop.
+        Crops are saved under <dossier>/crops/.
 
         `dossier` = shortcode, post URL or dossier path. With no `frames` and no contact
         sheet (e.g. photo posts), up to max_images frames/images spread evenly are shown.
         """
         folder = find_dossier(dossier, root())
         cap = max(1, min(max_images, MAX_IMAGES))
+        if crop:
+            return await _crops(folder, frames, crop, scale, ocr, cap)
         index = load_frames(folder)
         paths: list[tuple[str, Path]] = []
         sheet = folder / "contact_sheet.jpg"

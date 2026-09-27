@@ -6,11 +6,13 @@ Pipeline:
    at least ``min_interval`` seconds have passed since the previous selected frame (so
    slow text slides or talking-head segments are still sampled), always including the
    first frame. ``showinfo`` reports each selected frame's ``pts_time``.
-2. Near-duplicates are dropped with a perceptual hash (compared with the previous kept
-   frame, so the timeline stays intact).
+2. Near-duplicates are dropped (:mod:`heliograph.media.dedupe`: perceptual hash vs. the
+   previous and every kept frame, plus a static-region rule for talking-head overlays and
+   frozen end-cards).
 3. If more than ``max_frames`` remain, an evenly spaced subset is kept.
-4. Frames are JPEGs scaled to at most ``max_height`` px high; an index is written to
-   ``frames.json`` next to them.
+4. Frames are JPEGs at native resolution (only downscaled when the longest side exceeds
+   ``max_side``, default 1920 px, so small chart labels stay legible); an index is written
+   to ``frames.json`` next to them.
 
 :func:`contact_sheet` tiles frames into one image with the timestamps burned in, which is
 far cheaper for Claude to look at than two dozen separate images.
@@ -27,10 +29,10 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-import imagehash
 from PIL import Image, ImageDraw, ImageFont
 
 from heliograph.eye import attach_artifact, span
+from heliograph.media.dedupe import DedupeStats, dedupe
 from heliograph.media.ffmpeg import FFmpegError, input_args, output_path, run
 
 __all__ = [
@@ -105,19 +107,6 @@ def _select_expr(scene_threshold: float, min_interval: float) -> str:
     )
 
 
-def _dedupe(
-    candidates: list[tuple[float, Path]], *, hash_size: int, max_distance: int
-) -> list[tuple[float, Path, imagehash.ImageHash]]:
-    kept: list[tuple[float, Path, imagehash.ImageHash]] = []
-    for t, path in candidates:
-        with Image.open(path) as img:
-            h = imagehash.phash(img, hash_size=hash_size)
-        if kept and (h - kept[-1][2]) <= max_distance:
-            continue
-        kept.append((t, path, h))
-    return kept
-
-
 def extract_keyframes(
     video: Path,
     out_dir: Path,
@@ -125,8 +114,8 @@ def extract_keyframes(
     scene_threshold: float = 0.3,
     min_interval: float = 2.0,
     max_frames: int = 24,
-    max_height: int = 1080,
-    jpeg_qscale: int = 5,
+    max_side: int = 1920,
+    jpeg_qscale: int = 3,
     hash_size: int = 16,
     max_distance: int = 22,
     timeout: float = 900,
@@ -139,11 +128,11 @@ def extract_keyframes(
         scene_threshold: ffmpeg scene score (0-1) above which a cut is detected.
         min_interval: Maximum gap in seconds between sampled frames.
         max_frames: Upper bound on returned frames (evenly subsampled).
-        max_height: Frames taller than this are downscaled (never upscaled).
+        max_side: Frames whose longest side exceeds this are downscaled (never upscaled).
         jpeg_qscale: ffmpeg MJPEG ``-q:v`` (2 = best/largest ... 31 = worst/smallest).
         hash_size: Perceptual-hash size (bits = ``hash_size**2``).
         max_distance: Hamming distance at or below which a frame counts as a duplicate
-            of the previously kept frame.
+            of the previously kept frame; negative disables all deduplication.
         timeout: ffmpeg timeout in seconds.
 
     Returns:
@@ -155,7 +144,9 @@ def extract_keyframes(
     raw_dir.mkdir()
     for old in out_dir.glob("frame_*.jpg"):
         old.unlink()
-    vf = f"{_select_expr(scene_threshold, min_interval)},showinfo,scale=-2:'min({max_height},ih)'"
+    scale = (f"scale=w='min(iw,{max_side})':h='min(ih,{max_side})'"
+             ":force_original_aspect_ratio=decrease")
+    vf = f"{_select_expr(scene_threshold, min_interval)},showinfo,{scale}"
     with span("media.frames", video=str(video), max_frames=max_frames) as s:
         try:
             proc = run(
@@ -175,7 +166,9 @@ def extract_keyframes(
                 if not times:
                     raise FFmpegError("could not parse frame timestamps from ffmpeg showinfo")
             candidates = list(zip(times, raw_files, strict=False))
-            kept = _dedupe(candidates, hash_size=hash_size, max_distance=max_distance)
+            stats = DedupeStats()
+            kept = dedupe(candidates, hash_size=hash_size, max_distance=max_distance,
+                          stats=stats)
             chosen = [kept[i] for i in pick_evenly(len(kept), max_frames)]
             frames: list[Frame] = []
             for i, (t, path, h) in enumerate(chosen, start=1):
@@ -190,6 +183,8 @@ def extract_keyframes(
         s.set(
             candidates=len(candidates),
             after_dedupe=len(kept),
+            dropped={"previous": stats.previous, "seen_before": stats.seen_before,
+                     "static": stats.static, "live_tiles": stats.live_tiles},
             frames=len(frames),
             total_kb=round(sum(f.path.stat().st_size for f in frames) / 1024, 1),
         )

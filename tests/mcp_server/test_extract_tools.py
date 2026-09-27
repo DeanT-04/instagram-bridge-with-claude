@@ -103,3 +103,25 @@ async def test_extract_media_and_collection(harness: Harness, dossier: Path,
         "ig_extract_collection", {"collection": "Trading strats", "limit": 5}))
     # the fixture reel belongs to trader.joe (not "trader"): nothing exists yet -> built
     assert out["processed"] == 2 and out["built"] == 2 and out["error"] == 0
+
+
+async def test_view_frames_crop_and_ocr_text(harness: Harness, dossier: Path) -> None:
+    (dossier / "frames" / "ocr.json").write_text(json.dumps({
+        "engine": "fake", "elapsed_s": 0.1, "frames": [
+            {"index": 2, "time_s": 4.5, "path": "frame_002.jpg",
+             "lines": [{"text": "EMA 9", "score": 0.9, "box": None}]}]}), encoding="utf-8")
+    blocks = _blocks(await harness.server.call_tool(
+        "ig_view_frames", {"dossier": CODE, "frames": [2, 3], "crop": "top-left",
+                           "scale": 3}))
+    assert isinstance(blocks[0], TextContent) and "frame #2 crop (0, 0, 16, 9) x3" in \
+        blocks[0].text
+    assert sum(isinstance(b, ImageContent) for b in blocks) == 2
+    assert len(list((dossier / "crops").glob("*.png"))) == 2
+    with pytest.raises(ToolError, match="crop needs"):
+        await harness.server.call_tool("ig_view_frames", {"dossier": CODE, "crop": "top"})
+    with pytest.raises(ToolError, match="Unknown crop"):
+        await harness.server.call_tool("ig_view_frames",
+                                       {"dossier": CODE, "frames": [1], "crop": "nowhere"})
+    out = json_of(await harness.server.call_tool("ig_read_dossier", {"dossier": CODE}))
+    assert out["frames"][1]["text"] == "EMA 9" and "text" not in out["frames"][0]
+    assert out["ocr"].endswith("ocr.json")

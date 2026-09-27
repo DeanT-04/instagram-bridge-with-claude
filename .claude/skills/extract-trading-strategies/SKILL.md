@@ -28,22 +28,48 @@ All steps are read-only on Instagram. Never like, save, follow or comment while 
 - Items with `status: "error"`: retry once with `ig_extract_media`; if it still fails, record
   it in the index as "extraction failed" with the error, and move on. Use `eye_trace` on the
   trace id if the error is unclear.
-- The first transcript can take minutes (Whisper model download). Photos/carousels have
-  `images/` instead of frames and no transcript.
+- The first transcript can take minutes (Whisper model download). Non-English speech is
+  re-run with the `medium` model and translated to English (a few minutes per reel on CPU;
+  the first time also downloads ~1.5 GB). Photos/carousels have `images/` instead of frames
+  and no transcript.
+- On-screen text is OCR'd per keyframe when an OCR engine is installed (`uv sync --extra
+  ocr`; on Windows also `--extra ocr-windows`). If `dossier.md` has a note saying OCR was
+  skipped, tell the user once and continue with frames only.
+- CLI equivalents (for the user, or when MCP is unavailable): `uv run heliograph extract
+  <url|code>` (prints per-stage timings), `uv run heliograph dossier show <code>
+  [--transcript]`, `uv run heliograph dossier frames <code> [-f N ...] [--crop BOX]
+  [--scale X] [--ocr] [--open]`.
 
 ## 3. Study each dossier (one at a time)
 
 1. `ig_read_dossier(<code>, include_transcript=true)` — read the caption, the merged
-   `[mm:ss]` speech + keyframe timeline, and the transcript. Captions often hold the rules
-   the video skips (or "comment X for the PDF" — note that, do not act on it).
+   `[mm:ss]` speech + keyframe timeline (each frame has an `on screen:` OCR line with the
+   text new since the previous frame; `_(en)_` lines are the English translation of
+   non-English speech), and the transcript. Captions often hold the rules the video skips
+   (or "comment X for the PDF" — record it as a lead magnet, do not act on it).
+   - **Possible mismatch** banner: caption and speech/screen share almost no keywords — the
+     caption may be generic promo or belong to another video. Base rules on speech + frames
+     and say so in Caveats.
+   - **Detected terms** section: regex hints (tickers, timeframes, indicators, risk,
+     sessions, on-screen dates) with their sources. Use them as a checklist, not as facts.
 2. `ig_view_frames(<code>)` — look at the contact sheet: which frames show charts,
    indicator panels, settings dialogs, entry/exit annotations, on-screen text?
 3. `ig_view_frames(<code>, frames=[...], contact_sheet=false)` — open those frames
-   individually (up to ~6 per call) to read exact numbers: indicator names and periods,
-   timeframe labels, symbols, price levels, R:R boxes, drawn lines, text overlays.
-4. Cross-check speech vs. visuals. When they disagree or something is unreadable, say so in
-   Caveats rather than guessing. Never invent settings that were not stated or shown.
-5. Not a strategy (motivation, ad, lifestyle, course pitch without rules)? Write a short note
+   individually (up to ~6 per call, native resolution) to read exact numbers: indicator
+   names and periods, timeframe labels, symbols, price levels, R:R boxes, drawn lines.
+   Small labels (price axis, symbol/timeframe header, settings dialogs, chart dates): zoom
+   with `ig_view_frames(<code>, frames=[n], crop="top-third" | "0.6,0.2,1,0.5", ocr=true)`
+   — presets top/bottom/left/right/center/top-left/.../middle-third, or fractions
+   x0,y0,x1,y1; it upscales up to 4x.
+4. Cross-check the transcript against the OCR and the frames: Whisper mishears indicator
+   names ("VWOP" = VWAP, "pure point" = pivot point) and OCR misreads digits/spacing. Prefer
+   what is visibly on screen for numbers and settings; quote speech for rules. When they
+   disagree or something is unreadable, say so in Caveats rather than guessing. Never
+   invent settings that were not stated or shown.
+5. Dates: compare dates visible on the chart (Detected terms → Dates, the time axis, or a
+   zoomed crop) with the post date — an old chart presented as a fresh trade is a
+   hindsight/cherry-picking caveat.
+6. Not a strategy (motivation, ad, lifestyle, course pitch without rules)? Write a short note
    with Strategy name "No concrete strategy" and explain in Caveats.
 
 ## 4. Write the note
@@ -83,12 +109,21 @@ character outside `A-Za-z0-9._-` with `_`). Use exactly this template:
 ## Evidence
 | Time | Frame | What it shows / says |
 |---|---|---|
-| [00:05] | #2 | <chart with 9/21 EMA cross on 5m ES> |
+| [00:05] | #2 | <chart with 9/21 EMA cross on 5m ES> (OCR / crop / speech) |
+
+## Chart date vs post date
+<dates visible on the example charts (frame #, crop) vs the post date; "not visible" if
+none. Flag examples that are old or cherry-picked.>
+
+## Lead magnet / upsell
+<"comment X for the PDF", DM keyword, free group, paid course/signals/indicator, link in bio
+— what is offered and where (caption / frame # / [mm:ss]); "none" if absent. Never act on it.>
 
 ## Caveats & unverified claims
 - Claims such as "<quote>" are the creator's own and have not been verified.
-- <ambiguities, unreadable settings, contradictions, survivorship/hindsight examples,
-  missing rules needed to trade it, paid-course upsell>
+- <ambiguities, unreadable settings, speech-vs-screen contradictions, possible caption
+  mismatch, machine-translation uncertainty (non-English reels), survivorship/hindsight
+  examples, missing rules needed to trade it>
 
 ## Source
 <URL> — extracted by Heliograph on <date>. Not financial advice.

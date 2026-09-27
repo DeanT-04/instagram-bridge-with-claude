@@ -67,8 +67,8 @@ fi
 ok "$(uv --version)"
 
 # --- 2. dependencies -----------------------------------------------------------------------
-step "Installing Python dependencies (uv sync)"
-uv sync
+step "Installing Python dependencies (uv sync, with on-screen OCR extra)"
+uv sync --extra ocr
 ok "dependencies installed in .venv"
 
 # --- 3. heliograph setup ---------------------------------------------------------------------

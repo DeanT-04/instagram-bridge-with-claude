@@ -69,6 +69,17 @@ class Settings(BaseSettings):
     cdp_port: int = Field(default=0, ge=0, le=65535, description="0 = random free port")
     browser_channel: BrowserChannel = "auto"
     whisper_model: str = "small"
+    whisper_model_non_english: str = Field(
+        default="medium",
+        description="Model used instead when the detected language is not English "
+        "(empty = keep whisper_model)",
+    )
+    whisper_translate: bool = Field(
+        default=True, description="Also produce an English translation of non-English speech"
+    )
+    ocr_engine: Literal["auto", "rapidocr", "windows", "off"] = Field(
+        default="auto", description="On-screen text OCR for keyframes (auto = best installed)"
+    )
 
     read_min_interval: float = Field(default=1.5, ge=0, description="Seconds between reads")
     read_jitter: float = Field(default=1.0, ge=0, description="Random extra seconds on reads")

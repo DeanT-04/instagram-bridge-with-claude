@@ -14,6 +14,7 @@ from heliograph.media.transcribe import (
     Transcript,
     extract_audio,
     load_transcript,
+    split_words,
     transcribe,
     write_transcript,
 )
@@ -62,3 +63,79 @@ def test_transcribe_tiny_model(video: Path, tmp_path: Path) -> None:
         pytest.skip("no speech synthesised (ffmpeg without flite): nothing to compare")
     assert t.language == "en"
     assert "hello" in t.text.lower()
+
+
+def test_split_words_caps_length_and_breaks_at_sentences() -> None:
+    words = [(i * 0.5, i * 0.5 + 0.4, f" w{i}") for i in range(40)]  # 20 s of speech
+    segs = split_words(words, max_len=8.0)
+    assert all(s.end - s.start <= 8.0 for s in segs) and len(segs) == 3
+    assert " ".join(s.text for s in segs) == " ".join(f"w{i}" for i in range(40))
+    punct = [(0.0, 0.5, " Buy"), (0.5, 3.0, " now."), (3.2, 3.6, " Then"), (3.6, 4.0, " exit.")]
+    assert [s.text for s in split_words(punct, max_len=8.0)] == ["Buy now.", "Then exit."]
+    assert split_words([]) == []
+
+
+class _Word:
+    def __init__(self, start: float, end: float, word: str) -> None:
+        self.start, self.end, self.word = start, end, word
+
+
+class _Seg:
+    def __init__(self, words: list[_Word]) -> None:
+        self.words = words
+        self.start, self.end = words[0].start, words[-1].end
+        self.text = "".join(w.word for w in words)
+
+
+class _Info:
+    def __init__(self, language: str) -> None:
+        self.language, self.language_probability, self.duration = language, 0.98, 4.0
+
+
+class FakeModel:
+    def __init__(self, name: str, language: str, calls: list[tuple[str, str]]) -> None:
+        self.name, self.language, self.calls = name, language, calls
+
+    def transcribe(self, wav: str, **kw: object) -> tuple[object, _Info]:
+        task = str(kw.get("task", "transcribe"))
+        self.calls.append((self.name, task))
+        assert kw.get("word_timestamps") is True
+
+        def gen() -> object:
+            text = " hello" if task == "translate" else " namaste"
+            yield _Seg([_Word(i * 1.0, i * 1.0 + 0.9, text) for i in range(12)])
+
+        return gen(), _Info(self.language)
+
+
+@pytest.mark.parametrize("language", ["hi", "en"])
+def test_non_english_upgrade_and_translation(video: Path, tmp_path: Path, language: str,
+                                             monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(transcribe_mod, "get_model",
+                        lambda size, *a: FakeModel(size, language, calls))
+    t = transcribe(video, tmp_path, model_size="small", non_english_model="medium",
+                   translate=True)
+    assert all(s.end - s.start <= 8.0 for s in t.segments) and len(t.segments) == 2
+    if language == "hi":
+        assert calls == [("small", "transcribe"), ("medium", "transcribe"),
+                         ("medium", "translate")]
+        assert t.model == "medium" and t.upgraded_from == "small"
+        assert t.translation and t.english_text.startswith("hello")
+        assert set(t.timings) == {"asr_s", "translate_s"}
+        md = (tmp_path / "transcript.md").read_text("utf-8")
+        assert "auto-upgraded from `small`" in md and "## English translation" in md
+        assert load_transcript(tmp_path) == t
+    else:
+        assert calls == [("small", "transcribe")] and t.translation == []
+        assert t.model == "small" and t.upgraded_from is None
+
+
+def test_no_upgrade_to_smaller_model(video: Path, tmp_path: Path,
+                                     monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: list[tuple[str, str]] = []
+    monkeypatch.setattr(transcribe_mod, "get_model",
+                        lambda size, *a: FakeModel(size, "hi", calls))
+    t = transcribe(video, None, model_size="large-v3", non_english_model="medium",
+                   translate=False)
+    assert calls == [("large-v3", "transcribe")] and t.model == "large-v3"

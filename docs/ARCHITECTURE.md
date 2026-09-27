@@ -41,13 +41,18 @@ src/heliograph/
     service.py           high-level ops composed from drivers (feed, profile, saved, search, DMs...)
   media/
     download.py          allow-listed CDN download (cdninstagram.com, fbcdn.net only), atomic writes
-    frames.py            ffmpeg scene-change + interval keyframes, perceptual dedupe
-    transcribe.py        faster-whisper (CPU int8), timestamped segments
+    frames.py            ffmpeg scene-change + interval keyframes (native res), contact sheet
+    dedupe.py            pHash vs previous/all kept frames + static-region (webcam/CTA tail) rule
+    ocr.py               optional on-screen text OCR: rapidocr (extra `ocr`), Windows.Media.Ocr (extra `ocr-windows`)
+    transcribe.py        faster-whisper (CPU int8), <=8 s word-split segments, non-English upgrade + English translation
   extract/
-    dossier.py           reel -> dossier folder: meta.json, video.mp4, transcript.{json,md}, frames/*.jpg, dossier.md
+    dossier.py           reel -> dossier folder: meta.json, video.mp4, transcript.{json,md}, frames/*.jpg, frames/ocr.json, dossier.md
+    render.py            dossier.md: facts, mismatch flag, detected terms, speech/frame/OCR timeline
+    signals.py           regex tickers/timeframes/indicators/risk/dates + caption-vs-content mismatch heuristic
+    zoom.py              crop_frame: region crop + upscale (+ OCR) of a keyframe -> crops/*.png
   mcp/
     server.py            FastMCP server exposing tools to Claude
-  cli.py                 Typer CLI: setup, doctor, login, eye, mcp, extract
+  cli.py                 Typer CLI: setup, doctor, login, eye, mcp, extract, dossier show|frames
 tests/                   pytest; unit tests use fixtures/fakes, live tests marked `@pytest.mark.live`
 docs/                    ARCHITECTURE.md, i18n READMEs (docs/i18n/README.<lang>.md), SECURITY.md
 scripts/                 setup.ps1 (Windows), setup.sh (macOS/Linux) — one-command bootstrap

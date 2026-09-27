@@ -22,7 +22,8 @@ runner = CliRunner()
 
 
 @pytest.mark.parametrize("cmd", [[], ["setup"], ["doctor"], ["login"], ["mcp"], ["extract"],
-                                 ["eye"], ["eye", "report"], ["version"]])
+                                 ["eye"], ["eye", "report"], ["version"],
+                                 ["dossier"], ["dossier", "show"], ["dossier", "frames"]])
 def test_help(cmd: list[str]) -> None:
     result = runner.invoke(cli.app, [*cmd, "--help"])
     assert result.exit_code == 0, result.output
@@ -129,3 +130,44 @@ def test_extract_single_and_collection(monkeypatch: pytest.MonkeyPatch) -> None:
     assert built == [REEL["code"]] * 3
     assert "dossier.md" in console.export_text()
     assert run_extract(console, ref=None, collection=None) == 2
+
+
+def test_dossier_show_and_frames(monkeypatch: pytest.MonkeyPatch) -> None:
+    import json as _json
+
+    from PIL import Image
+
+    root = get_settings().dossier_path / "trader" / "DZcli0001"
+    (root / "frames").mkdir(parents=True)
+    Image.new("RGB", (200, 100), "white").save(root / "frames" / "frame_001.jpg")
+    (root / "frames" / "frames.json").write_text(_json.dumps(
+        [{"index": 1, "time_s": 1.0, "path": "frame_001.jpg", "phash": "0"}]), "utf-8")
+    (root / "frames" / "ocr.json").write_text(_json.dumps({"engine": "x", "elapsed_s": 0,
+        "frames": [{"index": 1, "time_s": 1.0, "path": "frame_001.jpg",
+                    "lines": [{"text": "VWAP [2.7]", "score": 1, "box": None}]}]}), "utf-8")
+    (root / "dossier.md").write_text("# @trader - DZcli0001\n\n[bold]not markup[/]\n", "utf-8")
+    (root / "transcript.md").write_text("# Transcript\n", "utf-8")
+
+    res = runner.invoke(cli.app, ["dossier", "show", "DZcli0001", "--transcript"])
+    assert res.exit_code == 0 and "[bold]not markup[/]" in res.output
+    assert "# Transcript" in res.output
+    res = runner.invoke(cli.app, ["dossier", "frames", "DZcli0001"])
+    assert res.exit_code == 0 and "#1" in res.output and "VWAP [2.7]" in res.output
+    opened: list[Path] = []
+    monkeypatch.setattr("heliograph.commands.dossier.open_path", opened.append)
+    res = runner.invoke(cli.app, ["dossier", "frames", "DZcli0001", "-f", "1",
+                                  "--crop", "0,0,0.5,1", "--scale", "2", "--open"])
+    assert res.exit_code == 0 and "crop (0, 0, 100, 100) x2" in res.output
+    assert len(opened) == 1 and opened[0].suffix == ".png"
+    assert runner.invoke(cli.app, ["dossier", "frames", "DZcli0001", "--crop", "top"]
+                         ).exit_code == 2
+    assert runner.invoke(cli.app, ["dossier", "frames", "DZcli0001", "-f", "9"]).exit_code == 1
+    assert runner.invoke(cli.app, ["dossier", "show", "NOPE0001"]).exit_code == 1
+
+
+def test_format_timings() -> None:
+    from heliograph.commands.extract import format_timings
+
+    line = format_timings({"download": 1.26, "frames": 3.0, "total": 9.9}, ["transcript"])
+    assert line == "download 1.3s | frames 3.0s | total 9.9s | reused: transcript"
+    assert format_timings({}, []) == ""
