@@ -10,6 +10,7 @@ import pytest
 
 from heliograph import eye
 from heliograph.config import get_settings
+from heliograph.detect.instagram_app import clear_package_cache
 
 Recorded = Callable[..., list[dict[str, Any]]]
 
@@ -24,8 +25,10 @@ def isolated_home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[P
         monkeypatch.delenv(var, raising=False)
     monkeypatch.chdir(tmp_path)  # so a developer's .env is not picked up
     get_settings.cache_clear()
+    clear_package_cache()
     eye.configure(home / "eye")
     yield home
+    clear_package_cache()
     eye.reset()
     get_settings.cache_clear()
 

@@ -128,3 +128,66 @@ def test_instagram_api_error_moved_with_reexport() -> None:
     assert webapi.InstagramApiError is InstagramApiError
     err = InstagramApiError("x", status=404, path="/api/v1/x/")
     assert (err.status, err.path) == (404, "/api/v1/x/")
+
+
+def test_lock_holds_an_ownership_token_and_release_spares_foreign_locks(tmp_path: Path) -> None:
+    lock_path = tmp_path / "x.lock"
+    with FileLock(lock_path, timeout=1).hold():
+        pid, _, nonce = lock_path.read_text().partition(":")
+        assert pid == str(os.getpid()) and len(nonce) == 16
+        lock_path.write_text("someone-else")  # e.g. ours was broken as stale meanwhile
+    assert lock_path.read_text() == "someone-else"  # not deleted: it is not ours
+
+
+def test_breaking_a_lock_that_was_just_replaced_puts_it_back(tmp_path: Path) -> None:
+    """B judged an old lock stale, but A replaced it before B's rename: A keeps it."""
+    lock_path = tmp_path / "x.lock"
+    with FileLock(lock_path, timeout=1).hold():
+        live = lock_path.read_text()
+        old = time.time() - 120
+        os.utime(lock_path, (old, old))
+        b = FileLock(lock_path, timeout=0.2, stale_after=30)
+        real_read = b._read
+        seen = iter(["999:stale-token"])  # what B read before A's lock replaced it
+        b._read = lambda path=None: next(seen) if path is None else real_read(path)  # type: ignore[method-assign]
+        b._break_if_stale()
+        assert lock_path.read_text() == live
+        assert not list(tmp_path.glob("*.stale"))
+        os.utime(lock_path, None)  # fresh again: B must wait, not steal it
+        with pytest.raises(TimeoutError), FileLock(lock_path, timeout=0.2).hold():
+            pass
+    assert not lock_path.exists()
+
+
+def test_concurrent_breakers_of_a_stale_lock_never_both_hold_it(tmp_path: Path) -> None:
+    import threading
+
+    lock_path = tmp_path / "x.lock"
+    inside = 0
+    peak = 0
+    guard = threading.Lock()
+
+    def worker(barrier: threading.Barrier) -> None:
+        nonlocal inside, peak
+        barrier.wait()
+        with FileLock(lock_path, timeout=5, stale_after=30, poll=0.001).hold():
+            with guard:
+                inside += 1
+                peak = max(peak, inside)
+            time.sleep(0.002)
+            with guard:
+                inside -= 1
+
+    for _ in range(15):
+        lock_path.write_text("1:crashed")
+        old = time.time() - 120
+        os.utime(lock_path, (old, old))
+        barrier = threading.Barrier(6)
+        threads = [threading.Thread(target=worker, args=(barrier,)) for _ in range(6)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join()
+        assert not lock_path.exists()
+    assert peak == 1
+    assert not list(tmp_path.glob("*.stale"))

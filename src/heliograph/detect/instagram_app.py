@@ -6,23 +6,64 @@ import json
 import os
 import subprocess
 import sys
+import threading
+import time
 from typing import Any
 
 from heliograph.detect.models import (
     INSTAGRAM_AUMID,
     INSTAGRAM_PACKAGE,
     INSTAGRAM_STORE_PRODUCT_ID,
+    NOT_INSTALLED,
     InstagramAppInfo,
 )
 from heliograph.eye import span
 
-__all__ = ["detect_instagram_app", "find_instagram_window", "install_instagram_app"]
+__all__ = [
+    "clear_package_cache",
+    "detect_instagram_app",
+    "find_instagram_window",
+    "install_instagram_app",
+]
 
 STORE_URI = f"ms-windows-store://pdp/?ProductId={INSTAGRAM_STORE_PRODUCT_ID}"
 _PS_QUERY = (
     f"Get-AppxPackage -Name {INSTAGRAM_PACKAGE} | "
     "Select-Object Name,Version,PackageFamilyName,InstallLocation | ConvertTo-Json -Compress"
 )
+
+
+# Get-AppxPackage costs ~1.5 s (PowerShell start-up + the Appx query), so its answer is
+# cached for the process lifetime: an installed package is remembered until the process
+# ends; "not installed" is re-checked after _NOT_INSTALLED_TTL (the user may be installing
+# it from the Store right now). Failures are never cached.
+_NOT_INSTALLED_TTL = 60.0
+_cache_lock = threading.Lock()
+_package_cache: tuple[float, dict[str, Any] | None] | None = None
+
+
+def clear_package_cache() -> None:
+    """Forget the cached Get-AppxPackage result (tests, or after installing the app)."""
+    global _package_cache
+    with _cache_lock:
+        _package_cache = None
+
+
+def _cached_package() -> tuple[bool, dict[str, Any] | None]:
+    """(hit, package) from the cache."""
+    with _cache_lock:
+        if _package_cache is None:
+            return False, None
+        stamp, pkg = _package_cache
+        if pkg is None and time.monotonic() - stamp > _NOT_INSTALLED_TTL:
+            return False, None
+        return True, pkg
+
+
+def _store_package(pkg: dict[str, Any] | None) -> None:
+    global _package_cache
+    with _cache_lock:
+        _package_cache = (time.monotonic(), pkg)
 
 
 def _powershell_exe() -> str:
@@ -100,13 +141,18 @@ def detect_instagram_app(*, check_window: bool = True) -> InstagramAppInfo:
         return InstagramAppInfo(supported=False, reason="Store app is Windows-only; web used")
     with span("detect.instagram_app") as s:
         try:
-            proc = _run_powershell(_PS_QUERY)
-            if proc.returncode != 0:
-                s.set(returncode=proc.returncode)
-                return InstagramAppInfo(
-                    supported=True, reason=f"Get-AppxPackage failed: {proc.stderr.strip()[:200]}"
-                )
-            pkg = _parse_package(proc.stdout)
+            hit, pkg = _cached_package()
+            s.set(cached=hit)
+            if not hit:
+                proc = _run_powershell(_PS_QUERY)
+                if proc.returncode != 0:
+                    s.set(returncode=proc.returncode)
+                    return InstagramAppInfo(
+                        supported=True,
+                        reason=f"Get-AppxPackage failed: {proc.stderr.strip()[:200]}",
+                    )
+                pkg = _parse_package(proc.stdout)
+                _store_package(pkg)
         except FileNotFoundError:
             return InstagramAppInfo(supported=True, reason="powershell not found")
         except subprocess.TimeoutExpired:
@@ -115,7 +161,7 @@ def detect_instagram_app(*, check_window: bool = True) -> InstagramAppInfo:
             return InstagramAppInfo(supported=True, reason=f"could not query package: {exc}")
         if pkg is None:
             s.set(installed=False)
-            return InstagramAppInfo(supported=True, installed=False, reason="not installed")
+            return InstagramAppInfo(supported=True, installed=False, reason=NOT_INSTALLED)
         family = pkg.get("PackageFamilyName")
         info = InstagramAppInfo(
             supported=True,
@@ -143,7 +189,8 @@ def install_instagram_app() -> str:
     if sys.platform != "win32":
         return (
             "The Instagram desktop app is only available on Windows. Heliograph will use the "
-            "Instagram web app in a dedicated browser window instead (run `heliograph login`)."
+            "Instagram web app in a dedicated browser window instead "
+            "(run `uv run heliograph login`)."
         )
     with span("detect.install_instagram_app", uri=STORE_URI):
         try:

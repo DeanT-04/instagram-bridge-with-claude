@@ -7,6 +7,7 @@ from rich.table import Table
 
 from heliograph import __version__
 from heliograph.detect import EnvironmentReport
+from heliograph.detect.models import NOT_INSTALLED
 
 __all__ = ["doctor_rows", "ffmpeg_hint", "render_report"]
 
@@ -27,10 +28,14 @@ def doctor_rows(r: EnvironmentReport) -> list[tuple[bool | None, str, str, str]]
         (True, "Python", r.python_version, ""),
     ]
     if app_.supported:
+        app_hint = ""
+        if not app_.installed:  # only point at the Store when the app is truly absent
+            app_hint = ("uv run heliograph setup  (opens the Microsoft Store)"
+                        if app_.reason == NOT_INSTALLED
+                        else "check failed; re-run: uv run heliograph doctor")
         rows.append((app_.installed, "Instagram Store app",
                      f"{app_.name} {app_.version} ({app_.aumid})" if app_.installed
-                     else (app_.reason or "not installed"),
-                     "" if app_.installed else "heliograph setup  (opens the Microsoft Store)"))
+                     else (app_.reason or NOT_INSTALLED), app_hint))
         if app_.installed:
             rows.append((app_.window_open, "Instagram window open",
                          app_.window_title or (app_.reason or "no window found"),
@@ -51,8 +56,11 @@ def doctor_rows(r: EnvironmentReport) -> list[tuple[bool | None, str, str, str]]
     for tool in (r.ffmpeg, r.ffprobe):
         rows.append((tool.found, tool.name, tool.version or (tool.reason or ""),
                      "" if tool.found else ffmpeg_hint(r.os)))
-    rows.append((r.browser_profile_initialized, "CDP browser profile", r.browser_profile_dir,
-                 "" if r.browser_profile_initialized else "heliograph login  (one-time sign-in)"))
+    profile_detail = r.browser_profile_dir
+    if r.logged_in is not None:
+        profile_detail += " (last seen logged in)" if r.logged_in else " (last seen logged out)"
+    rows.append((not r.needs_login, "CDP browser profile", profile_detail,
+                 "" if not r.needs_login else "uv run heliograph login  (one-time sign-in)"))
     return rows
 
 

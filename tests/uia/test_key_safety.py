@@ -170,7 +170,8 @@ def test_last_snapshot_is_public(driver: UiaDriver) -> None:
 
 @pytest.mark.parametrize(
     ("size", "allowed"),
-    [((40, 40), True), ((600, 48), True), ((300, 900), True), ((600, 700), False)],
+    [((40, 40), True), ((400, 200), True), ((401, 48), False), ((300, 201), False),
+     ((600, 700), False)],
 )
 def test_mouse_fallback_refuses_containers(size: tuple[int, int], allowed: bool) -> None:
     if allowed:

@@ -7,7 +7,7 @@
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
   <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
-  <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
+  <a href="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>Reels dosyaları</h3>
-      Algısal tekilleştirmeli ffmpeg sahne değişimi anahtar kareleri, bir kontak baskı ve faster-whisper dökümü; her reel için bir Markdown dosyasında toplanır.<br><br><sub><b>Kullanılabilir</b></sub>
+      Algısal tekilleştirmeli ffmpeg sahne değişimi anahtar kareleri, bir kontak baskı ve faster-whisper dökümü; her reel için bir Markdown dosyasında toplanır. Ekrandaki metin OCR ile okunur, İngilizce olmayan konuşmaya ayrıca İngilizce çeviri eklenir ve grafiklerdeki küçük etiketler kırpılıp büyütülebilir.<br><br><sub><b>Kullanılabilir</b></sub>
     </td>
   </tr>
   <tr>
@@ -88,8 +88,8 @@ git clone https://github.com/DeanT-04/instagram-bridge-with-claude.git heliograp
 cd heliograph
 
 # 2. Run the one-command setup
-./scripts/setup.ps1        # Windows (PowerShell)
-./scripts/setup.sh         # macOS / Linux
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1   # Windows
+bash scripts/setup.sh                                        # macOS / Linux
 
 # 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
 uv run heliograph login
@@ -98,7 +98,7 @@ uv run heliograph login
 claude
 ```
 
-Claude Code, Heliograph MCP sunucusunu `.mcp.json` üzerinden bulur ve ilk seferde onayınızı ister. Kurulum güvenle tekrar çalıştırılabilir; soruları atlamak için `--yes`, konuşma modelini (~500 MB) önceden indirmek için `--with-whisper` ekleyin. Bir sorun varsa `uv run heliograph doctor` çalıştırın.
+Claude Code, Heliograph MCP sunucusunu `.mcp.json` üzerinden bulur ve ilk seferde onayını ister. Varsayılan Windows betikleri engeller (yürütme ilkesi *Restricted*); bu yüzden kurulumu gösterildiği gibi `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` ile başlatın: istisna yalnızca o çalıştırma için geçerlidir ve hiçbir ayarı değiştirmez. Kurulum güvenle yeniden çalıştırılabilir. **Windows** seçenekleri: `-Yes` (soru sormaz), `-NoInput` (asla sormaz, hayır yanıtını verir; CI için), `-WithWhisper` (konuşma modelini önceden indirir, ~500 MB). **macOS / Linux**: `--yes`, `--no-input`, `--with-whisper`. uv yoksa betik, size sorduktan sonra uv 0.12.1'i sürümü sabitlenmiş resmi yükleyiciyle kurar. Bir sorun görünüyorsa `uv run heliograph doctor` çalıştırın.
 
 ## Claude ile kullanım
 
@@ -231,17 +231,19 @@ Yedi ailede 41 araç. Listeleme araçları `limit` ve `cursor` alır; sonraki sa
 
 1. Claude'a şunu sorarsınız: *"'Trading strats' koleksiyonumdaki tüm stratejileri çıkar."*
 2. Heliograph, koleksiyonu derin sürücü üzerinden listeler ve her reel'i Instagram CDN'inden indirir.
-3. Medya hattı, sahne değişimi anahtar karelerini (grafikler, kurulumlar, notlar), bir kontak baskıyı ve zaman damgalı bir dökümü çıkarır.
-4. Claude her dosyayı okur, `ig_view_frames` ile **karelere bakar** ve her reel için bir not yazar — giriş kuralları, çıkışlar, risk yönetimi, gösterge ayarları ve doğrulayamadığı iddialar — ayrıca bir dizin oluşturur.
+3. Medya hattı, sahne değişimi anahtar karelerini (grafikler, kurulumlar, notlar), bir kontak baskıyı ve zaman damgalı bir dökümü çıkarır. Her anahtar karedeki ekran metni OCR ile okunur ve İngilizce olmayan konuşmaya İngilizce çeviri eklenir.
+4. Claude her dosyayı okur, `ig_view_frames` ile **karelere bakar** ve her reel için bir not yazar — giriş kuralları, çıkışlar, risk yönetimi, gösterge ayarları ve doğrulayamadığı iddialar — ayrıca bir dizin oluşturur. Grafiklerdeki küçük etiketler ve gösterge ayarları kırpılıp büyütülür (`ig_view_frames(..., crop=...)`) ve söylenenlerle karşılaştırılır.
 
 ```text
 ~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
 ├── caption.md
 ├── video.mp4          # or images/NN.jpg for photo posts
-├── transcript.json    # timestamped segments + language
+├── transcript.json    # timestamped segments + language (+ English translation)
 ├── transcript.md
 ├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── ocr.json           # on-screen text of every keyframe (OCR)
+├── crops/             # zoomed regions of small chart text
 ├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
@@ -279,14 +281,18 @@ Tehdit modeli ve güvenlik açığı bildirme yolu için [docs/SECURITY.md](../S
 | Komut | Ne yapar | Durum |
 |---|---|---|
 | `heliograph setup` | Ortamı denetler, çözümler önerir (Chromium, Store uygulaması), isteğe bağlı Whisper'ı önceden indirir, sonraki adımları gösterir | Kullanılabilir |
+| `heliograph setup --no-input` | Aynı kontroller, hiç soru sormadan (hayır yanıtını verir); betikler ve CI için | Kullanılabilir |
 | `heliograph doctor` | Instagram uygulamasını, Edge/Chrome'u, ffmpeg'i, işletim sistemini ve oturum durumunu algılar (ham çıktı için `--json`) | Kullanılabilir |
 | `heliograph login` | Bir kez elle giriş yapmanız için özel tarayıcı profilini açar | Kullanılabilir |
 | `heliograph mcp` | MCP sunucusunu stdio üzerinden çalıştırır (Claude Code bunu sizin için başlatır) | Kullanılabilir |
 | `heliograph extract <url>` | Bir reel/gönderi için dosya oluşturur ya da `--collection "<ad>"` ile tüm koleksiyon için | Kullanılabilir |
+| `heliograph dossier show <code>` | Oluşturulmuş bir dosyayı gösterir: açıklama, bulunan terimler, konuşma/kare/OCR zaman çizelgesi (`--transcript` dökümü de ekler) | Kullanılabilir |
+| `heliograph dossier frames <code>` | Anahtar kareleri zaman damgası ve ekran metniyle listeler ya da büyütülmüş kırpıntılar kaydeder (`--crop`, isteğe bağlı `--ocr`) | Kullanılabilir |
 | `heliograph eye` | Göz'ün sağlık göstergeli canlı akışı | Kullanılabilir |
 | `heliograph eye report` | Son hataların ve anormalliklerin özeti | Kullanılabilir |
+| `heliograph version` | Heliograph sürümünü yazdırır | Kullanılabilir |
 
-Çoğu komut, ayrı bir tarayıcı profili kullanmak için `--account <anahtar>` kabul eder.
+Her komutu proje klasöründe `uv run heliograph <komut>` olarak çalıştırın. `login`, `mcp` ve `extract`, ayrı bir tarayıcı profili kullanmak için `--account <anahtar>` kabul eder.
 
 <details>
 <summary><b>Proje yapısı</b></summary>
@@ -296,22 +302,26 @@ Tehdit modeli ve güvenlik açığı bildirme yolu için [docs/SECURITY.md](../S
 ```text
 src/heliograph/
 ├── cli.py              # Typer CLI entry point
-├── commands/           # setup, doctor, login, extract
+├── commands/           # setup, doctor, login, extract, dossier.py (show / frames)
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
+├── writelimit.py       # write rate limit shared by every process (lock file + state)
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
 │   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
 ├── instagram/          # models, service, collections, write actions
-├── media/              # allow-listed download, ffmpeg frames, faster-whisper
-├── extract/            # reel -> dossier
+├── media/              # allow-listed download, ffmpeg frames, faster-whisper,
+│                       #   ocr.py (on-screen text), dedupe.py (near-duplicate frames)
+├── extract/            # reel -> dossier; render.py, signals.py (terms, mismatch),
+│                       #   zoom.py (crop + zoom small chart text)
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
 └── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
 scripts/                # setup.ps1 / setup.sh
+.github/workflows/ci.yml # lint, strict types and tests on Windows, macOS and Linux
 .claude/skills/         # extract-trading-strategies, instagram-control
 .mcp.json               # registers the MCP server with Claude Code
 CLAUDE.md               # operating manual for Claude
@@ -325,7 +335,7 @@ CLAUDE.md               # operating manual for Claude
 - [x] Okuma, koleksiyon, çıkarma, canlı uygulama, yazma ve Göz araçlarıyla MCP sunucusu
 - [x] `extract-trading-strategies` ve `instagram-control` becerileri
 - [ ] Her yazma işleminin canlı doğrulanması
-- [ ] Windows, macOS ve Linux'ta CI
+- [x] Windows, macOS ve Linux'ta CI
 - [ ] Claude oturumlarında **çoklu hesap** desteği (ayrı profiller `--account` ile zaten çalışıyor)
 - [ ] `adb` ile **Android**
 - [ ] **macOS** canlı uygulama sürücüsü (Erişilebilirlik API'si)

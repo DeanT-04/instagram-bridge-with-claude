@@ -12,6 +12,7 @@ from rich.console import Console
 from heliograph.commands.doctor import ffmpeg_hint, render_report
 from heliograph.config import get_settings
 from heliograph.detect import detect_environment, install_instagram_app
+from heliograph.detect.models import NOT_INSTALLED
 
 __all__ = ["run_setup"]
 
@@ -66,7 +67,12 @@ def run_setup(
                       f"Install it with:  [bold]{ffmpeg_hint(report.os)}[/]")
 
     app = report.instagram_app
-    if app.supported and not app.installed:
+    if app.supported and not app.installed and app.reason != NOT_INSTALLED:
+        # The check itself failed (PowerShell blocked, timeout...): the app may well be
+        # installed, so don't send the user to the Store for it.
+        console.print(f"[yellow]Could not check for the Instagram Store app[/] ({app.reason}). "
+                      "Re-run [bold]uv run heliograph doctor[/] later; it is optional.")
+    elif app.supported and not app.installed:
         console.print("[yellow]The Instagram app from the Microsoft Store is not installed.[/] "
                       f"It is optional (enables the live-app tools): {STORE_WEB_URL}")
         if _ask("Open the Microsoft Store page for Instagram now?", assume_yes=assume_yes,
@@ -83,7 +89,7 @@ def run_setup(
     console.print()
     console.print("[bold]Next steps[/]")
     step = 1
-    if not report.browser_profile_initialized:
+    if report.needs_login:
         console.print(f" {step}. [bold]uv run heliograph login[/]  — sign in to Instagram "
                       "yourself in the window that opens (Heliograph never sees your password).")
         step += 1

@@ -48,7 +48,9 @@ def test_doctor_exit_code(monkeypatch: pytest.MonkeyPatch, browsers: bool, code:
 def test_doctor_json(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(cli, "detect_environment", lambda: _report(True))
     result = runner.invoke(cli.app, ["doctor", "--json"])
-    assert json.loads(result.output)["python_version"] == "3.12.4"
+    data = json.loads(result.output)
+    assert data["python_version"] == "3.12.4" and data["needs_login"] is True
+    assert data["logged_in"] is None
 
 
 def test_eye_report_and_tail() -> None:

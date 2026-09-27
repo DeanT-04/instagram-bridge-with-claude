@@ -18,6 +18,7 @@ import re
 import socket
 import subprocess
 import sys
+import threading
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -83,11 +84,27 @@ def read_devtools_active_ws_path(profile_dir: Path) -> str | None:
     return path if path.startswith("/devtools/browser/") else None
 
 
+_client: httpx.Client | None = None
+_client_lock = threading.Lock()
+
+
+def _http_get(url: str, timeout: float) -> httpx.Response:
+    """GET via one shared client: building an ``httpx.Client`` (its SSL context) costs
+    ~0.4 s, which used to dominate every probe. ``trust_env=False``: never send a
+    loopback DevTools request through a proxy from the environment."""
+    global _client
+    with _client_lock:
+        if _client is None:
+            _client = httpx.Client(trust_env=False)
+        client = _client
+    return client.get(url, timeout=timeout)
+
+
 def probe_endpoint(port: int, *, timeout: float = 2.0) -> CdpEndpoint | None:
     """Validate ``port`` by fetching ``/json/version``; None if nothing answers there."""
     with span("cdp.probe", port=port) as s:
         try:
-            resp = httpx.get(f"http://{HOST}:{port}/json/version", timeout=timeout)
+            resp = _http_get(f"http://{HOST}:{port}/json/version", timeout=timeout)
             data = resp.json() if resp.status_code == 200 else None
         except (httpx.HTTPError, ValueError):
             data = None
@@ -155,11 +172,15 @@ def _process_cmdlines() -> list[tuple[int, str]]:
             "'*--remote-debugging-port=*' } | "
             "ForEach-Object { \"$($_.ProcessId)|$($_.CommandLine)\" }"
         )
-        cmd = ["powershell", "-NoProfile", "-NonInteractive", "-Command", script]
+        from heliograph.detect.instagram_app import _powershell_exe
+
+        # absolute path: a bare "powershell" would also be searched for in the cwd
+        cmd = [_powershell_exe(), "-NoProfile", "-NonInteractive", "-Command", script]
     else:
         cmd = ["ps", "-eo", "pid=,args="]
     try:
-        out = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False)
+        out = subprocess.run(cmd, capture_output=True, text=True, timeout=15, check=False,
+                             creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
     except (OSError, subprocess.SubprocessError):
         return []
     rows: list[tuple[int, str]] = []

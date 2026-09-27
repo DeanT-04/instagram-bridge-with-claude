@@ -44,13 +44,17 @@ class HeliographError(Exception):
 class NotLoggedInError(HeliographError):
     """The Instagram session is not logged in."""
 
-    default_hint = "Run `heliograph login` and sign in to Instagram in the window that opens."
+    default_hint = (
+        "Run `uv run heliograph login` and sign in to Instagram in the window that opens."
+    )
 
 
 class AppNotInstalledError(HeliographError):
     """The Microsoft Store Instagram app is not installed."""
 
-    default_hint = "Run `heliograph setup` to open the Store page, or use the browser (cdp) driver."
+    default_hint = (
+        "Run `uv run heliograph setup` to open the Store page, or use the browser (cdp) driver."
+    )
 
 
 class BrowserNotFoundError(HeliographError):

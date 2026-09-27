@@ -9,6 +9,7 @@ video frames may render black this way. Fallback: ``PIL.ImageGrab`` of the windo
 from __future__ import annotations
 
 import ctypes
+import sys
 from pathlib import Path
 
 from heliograph.drivers.uia.runtime import make_dpi_aware
@@ -20,6 +21,8 @@ PW_RENDERFULLCONTENT = 2
 
 
 def _print_window(hwnd: int, path: Path) -> bool:
+    if sys.platform != "win32":  # also narrows ctypes.windll for mypy on linux/darwin
+        return False
     import win32gui
     import win32ui
     from PIL import Image

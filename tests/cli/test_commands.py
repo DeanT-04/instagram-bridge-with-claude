@@ -171,3 +171,18 @@ def test_format_timings() -> None:
     line = format_timings({"download": 1.26, "frames": 3.0, "total": 9.9}, ["transcript"])
     assert line == "download 1.3s | frames 3.0s | total 9.9s | reused: transcript"
     assert format_timings({}, []) == ""
+
+
+def test_setup_does_not_offer_store_when_the_check_failed(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    failed = report()
+    failed.instagram_app.reason = "Get-AppxPackage failed: access denied"
+    opened: list[str] = []
+    monkeypatch.setattr(setup_mod, "detect_environment", lambda: failed)
+    monkeypatch.setattr(setup_mod, "install_instagram_app",
+                        lambda: opened.append("store") or "Opened")
+    result = runner.invoke(cli.app, ["setup", "--yes"])
+    assert result.exit_code == 0, result.output
+    assert "Could not check for the Instagram Store app" in result.output
+    assert "Open the Microsoft Store" not in result.output and opened == []

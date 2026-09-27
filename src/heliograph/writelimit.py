@@ -3,8 +3,9 @@
 The MCP server, the CLI and tests can run as separate processes at once, so an in-memory
 limiter would let each of them write at full speed. The next allowed write time lives in
 ``~/.heliograph/ratelimit.json`` instead, updated under a small portable lock file
-(``os.open(O_CREAT | O_EXCL)``; a lock older than ``stale_after`` seconds is assumed to be
-left over by a crashed process and removed). No extra dependencies.
+(``os.open(O_CREAT | O_EXCL)`` + an ownership token re-read before use; a lock older than
+``stale_after`` seconds is assumed to be left over by a crashed process and broken by an
+atomic rename, so two processes can never both hold it). No extra dependencies.
 
 A write *reserves* a slot: under the lock it reads ``next_allowed``, takes
 ``max(now, next_allowed)`` and stores ``slot + write_min_interval + U(0, write_jitter)``.
@@ -17,6 +18,8 @@ import asyncio
 import json
 import os
 import random
+import secrets
+import sys
 import time
 from collections.abc import Awaitable, Callable, Iterator
 from contextlib import contextmanager
@@ -29,8 +32,26 @@ from heliograph.eye import event
 __all__ = ["FileLock", "SharedWriteLimiter", "shared_write_limiter"]
 
 
+def _unlink(path: Path, attempts: int = 200) -> None:
+    """Remove ``path``; on Windows retry while another process briefly has it open."""
+    for _ in range(attempts):
+        try:
+            path.unlink(missing_ok=True)
+            return
+        except PermissionError:
+            time.sleep(0.005)
+    path.unlink(missing_ok=True)  # last try: let the error surface
+
+
 class FileLock:
     """Exclusive lock file (``<path>``) usable across processes.
+
+    The holder writes a unique token (``pid:nonce``) into the lock and re-reads it before
+    entering the ``with`` block, so it only proceeds while the lock file is provably its
+    own. A stale lock is broken by *renaming* it to a unique name (atomic: only one
+    waiter can take a given file) and checking the renamed file still carries the stale
+    token; if a live lock was grabbed by mistake it is put back without overwriting. On
+    release only a lock holding our own token is removed.
 
     Args:
         path: The lock file to create.
@@ -46,41 +67,71 @@ class FileLock:
         self.stale_after = stale_after
         self.poll = poll
 
+    def _read(self, path: Path | None = None) -> str | None:
+        try:
+            return (path or self.path).read_text("utf-8")
+        except (OSError, UnicodeDecodeError):
+            return None
+
     def _break_if_stale(self) -> None:
         try:
             age = time.time() - self.path.stat().st_mtime
         except FileNotFoundError:
             return
-        if age > self.stale_after:
-            try:
-                self.path.unlink()
-            except FileNotFoundError:
-                pass
+        if age <= self.stale_after:
+            return
+        stale_token = self._read()
+        tomb = self.path.with_name(f"{self.path.name}.{secrets.token_hex(6)}.stale")
+        try:
+            os.rename(self.path, tomb)  # atomic: of several breakers only one gets the file
+        except OSError:  # gone already, or open/being replaced by another process
+            return
+        if self._read(tomb) == stale_token:
+            _unlink(tomb)
+            return
+        # The lock was replaced between our check and the rename: that is a live lock.
+        # Put it back without overwriting a lock someone created in the meantime.
+        try:
+            if sys.platform == "win32":
+                os.rename(tomb, self.path)  # fails if path exists
+            else:
+                os.link(tomb, self.path)  # fails if path exists
+                _unlink(tomb)
+        except OSError:
+            _unlink(tomb)  # its owner sees the token change and retries
+
+    def _try_create(self, token: str) -> bool:
+        try:
+            fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
+        except FileExistsError:
+            if self._read() == token:  # our own lock, restored by a breaker
+                return True
+            self._break_if_stale()
+            return False
+        except PermissionError:  # Windows: file is being deleted by another process
+            return False
+        try:
+            os.write(fd, token.encode())
+            os.fsync(fd)
+        finally:
+            os.close(fd)
+        # Re-verify: a waiter that judged an older lock stale may have removed ours.
+        return self._read() == token
 
     @contextmanager
     def hold(self) -> Iterator[None]:
         """Acquire the lock for the ``with`` block."""
+        token = f"{os.getpid()}:{secrets.token_hex(8)}"
         deadline = time.monotonic() + self.timeout
-        while True:
-            try:
-                fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY, 0o600)
-                break
-            except FileExistsError:
-                self._break_if_stale()
-            except PermissionError:  # Windows: file is being deleted by another process
-                pass
+        while not self._try_create(token):
             if time.monotonic() >= deadline:
                 raise TimeoutError(f"could not acquire {self.path} within {self.timeout}s")
             time.sleep(self.poll)
         try:
-            os.write(fd, str(os.getpid()).encode())
-            os.close(fd)
             yield
         finally:
-            try:
-                self.path.unlink()
-            except FileNotFoundError:
-                pass
+            if self._read() == token:  # never delete a lock that is not ours
+                _unlink(self.path)
 
 
 class SharedWriteLimiter:

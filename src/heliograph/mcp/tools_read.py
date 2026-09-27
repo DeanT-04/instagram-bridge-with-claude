@@ -63,7 +63,7 @@ def register(server: FastMCP, rt: Runtime) -> None:
         """Return the Instagram account logged in to Heliograph's dedicated browser profile.
 
         Fails with NotLoggedInError if the user has not signed in yet (they must run
-        `heliograph login` themselves; never ask for their password)."""
+        `uv run heliograph login` themselves; never ask for their password)."""
         svc = await rt.service()
         return dump_user(await svc.viewer()) or {}
 

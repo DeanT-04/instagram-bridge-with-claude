@@ -7,7 +7,7 @@
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
   <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
-  <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
+  <a href="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>रील डोज़ियर</h3>
-      परसेप्चुअल डी-डुप्लिकेशन के साथ ffmpeg सीन-चेंज कीफ़्रेम, एक कॉन्टैक्ट शीट और faster-whisper ट्रांसक्रिप्ट, हर रील के लिए एक Markdown डोज़ियर में।<br><br><sub><b>उपलब्ध</b></sub>
+      परसेप्चुअल डी-डुप्लिकेशन के साथ ffmpeg सीन-चेंज कीफ़्रेम, एक कॉन्टैक्ट शीट और faster-whisper ट्रांसक्रिप्ट, हर रील के लिए एक Markdown डोज़ियर में। स्क्रीन पर लिखा टेक्स्ट OCR से पढ़ा जाता है, गैर-अंग्रेज़ी बोली का अंग्रेज़ी अनुवाद भी जुड़ता है, और चार्ट के छोटे लेबल क्रॉप करके ज़ूम किए जा सकते हैं।<br><br><sub><b>उपलब्ध</b></sub>
     </td>
   </tr>
   <tr>
@@ -88,8 +88,8 @@ git clone https://github.com/DeanT-04/instagram-bridge-with-claude.git heliograp
 cd heliograph
 
 # 2. Run the one-command setup
-./scripts/setup.ps1        # Windows (PowerShell)
-./scripts/setup.sh         # macOS / Linux
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1   # Windows
+bash scripts/setup.sh                                        # macOS / Linux
 
 # 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
 uv run heliograph login
@@ -98,7 +98,7 @@ uv run heliograph login
 claude
 ```
 
-Claude Code `.mcp.json` से Heliograph MCP सर्वर को पहचान लेता है और पहली बार आपसे उसे मंज़ूरी देने के लिए कहता है। सेटअप को दोबारा चलाना सुरक्षित है; सवाल छोड़ने के लिए `--yes` या स्पीच मॉडल (~500 MB) पहले से डाउनलोड करने के लिए `--with-whisper` जोड़ें। कुछ गड़बड़ लगे तो `uv run heliograph doctor` चलाएँ।
+Claude Code `.mcp.json` से Heliograph MCP सर्वर पहचान लेता है और पहली बार आपसे मंज़ूरी माँगता है। नया Windows स्क्रिप्ट ब्लॉक करता है (एक्ज़िक्यूशन पॉलिसी *Restricted*), इसलिए सेटअप ऊपर दिखाए अनुसार `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` से चलाएँ: यह छूट सिर्फ़ उसी बार के लिए है और कोई सेटिंग नहीं बदलती। सेटअप दोबारा चलाना सुरक्षित है। **Windows** पर विकल्प: `-Yes` (कोई सवाल नहीं), `-NoInput` (कभी नहीं पूछता, जवाब 'नहीं'; CI के लिए), `-WithWhisper` (स्पीच मॉडल पहले से डाउनलोड, ~500 MB)। **macOS / Linux** पर: `--yes`, `--no-input`, `--with-whisper`। अगर uv नहीं है, तो स्क्रिप्ट पूछने के बाद पिन किए गए आधिकारिक इंस्टॉलर से uv 0.12.1 इंस्टॉल करती है। कुछ गड़बड़ लगे तो `uv run heliograph doctor` चलाएँ।
 
 ## Claude के साथ उपयोग
 
@@ -231,17 +231,19 @@ Microsoft Store वाला Instagram ऐप एक Edge वेब ऐप ह�
 
 1. आप Claude से कहते हैं: *"मेरे 'Trading strats' कलेक्शन से हर रणनीति निकालो।"*
 2. Heliograph डीप ड्राइवर के ज़रिए कलेक्शन की सूची बनाता है और हर रील को Instagram के CDN से डाउनलोड करता है।
-3. मीडिया पाइपलाइन सीन-चेंज कीफ़्रेम (चार्ट, सेटअप, एनोटेशन), एक कॉन्टैक्ट शीट और टाइमस्टैम्प वाला ट्रांसक्रिप्ट निकालती है।
-4. Claude हर डोज़ियर पढ़ता है, `ig_view_frames` से **फ़्रेम देखता है**, और हर रील के लिए एक नोट लिखता है — एंट्री नियम, एग्ज़िट, रिस्क मैनेजमेंट, इंडिकेटर सेटिंग, और वे दावे जिनकी वह पुष्टि नहीं कर सका — साथ में एक इंडेक्स।
+3. मीडिया पाइपलाइन सीन-चेंज कीफ़्रेम (चार्ट, सेटअप, एनोटेशन), एक कॉन्टैक्ट शीट और टाइमस्टैम्प वाला ट्रांसक्रिप्ट निकालती है। हर कीफ़्रेम का स्क्रीन टेक्स्ट OCR से पढ़ा जाता है, और गैर-अंग्रेज़ी बोली का अंग्रेज़ी अनुवाद जुड़ता है।
+4. Claude हर डोज़ियर पढ़ता है, `ig_view_frames` से **फ़्रेम देखता है**, और हर रील के लिए एक नोट लिखता है — एंट्री नियम, एग्ज़िट, रिस्क मैनेजमेंट, इंडिकेटर सेटिंग, और वे दावे जिनकी वह पुष्टि नहीं कर सका — साथ में एक इंडेक्स। चार्ट के छोटे लेबल और इंडिकेटर सेटिंग्स क्रॉप और ज़ूम की जाती हैं (`ig_view_frames(..., crop=...)`) और कही गई बातों से मिलाई जाती हैं।
 
 ```text
 ~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
 ├── caption.md
 ├── video.mp4          # or images/NN.jpg for photo posts
-├── transcript.json    # timestamped segments + language
+├── transcript.json    # timestamped segments + language (+ English translation)
 ├── transcript.md
 ├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── ocr.json           # on-screen text of every keyframe (OCR)
+├── crops/             # zoomed regions of small chart text
 ├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
@@ -279,14 +281,18 @@ Microsoft Store वाला Instagram ऐप एक Edge वेब ऐप ह�
 | कमांड | क्या करता है | स्थिति |
 |---|---|---|
 | `heliograph setup` | परिवेश जाँचता है, समाधान सुझाता है (Chromium, Store ऐप), चाहें तो Whisper पहले से डाउनलोड करता है, अगले चरण बताता है | उपलब्ध |
+| `heliograph setup --no-input` | वही जाँचें, बिना किसी सवाल के (जवाब 'नहीं'); स्क्रिप्ट और CI के लिए | उपलब्ध |
 | `heliograph doctor` | Instagram ऐप, Edge/Chrome, ffmpeg, OS और लॉगिन स्थिति का पता लगाता है (कच्चे आउटपुट के लिए `--json`) | उपलब्ध |
 | `heliograph login` | समर्पित ब्राउज़र प्रोफ़ाइल खोलता है ताकि आप एक बार हाथ से साइन इन कर सकें | उपलब्ध |
 | `heliograph mcp` | MCP सर्वर को stdio पर चलाता है (Claude Code इसे आपके लिए शुरू करता है) | उपलब्ध |
 | `heliograph extract <url>` | एक रील/पोस्ट के लिए डोज़ियर बनाता है, या `--collection "<नाम>"` से पूरे कलेक्शन के लिए | उपलब्ध |
+| `heliograph dossier show <code>` | बना हुआ डोज़ियर दिखाता है: कैप्शन, पहचाने गए शब्द, बोली/फ़्रेम/OCR टाइमलाइन (`--transcript` ट्रांसक्रिप्ट भी जोड़ता है) | उपलब्ध |
+| `heliograph dossier frames <code>` | कीफ़्रेम को टाइमस्टैम्प और स्क्रीन टेक्स्ट के साथ सूचीबद्ध करता है, या ज़ूम किए गए क्रॉप सहेजता है (`--crop`, वैकल्पिक `--ocr`) | उपलब्ध |
 | `heliograph eye` | हेल्थ के साथ द आई का लाइव टेल | उपलब्ध |
 | `heliograph eye report` | हाल की त्रुटियों और असामान्यताओं का सारांश | उपलब्ध |
+| `heliograph version` | Heliograph का वर्ज़न दिखाता है | उपलब्ध |
 
-ज़्यादातर कमांड अलग ब्राउज़र प्रोफ़ाइल इस्तेमाल करने के लिए `--account <key>` स्वीकार करते हैं।
+हर कमांड प्रोजेक्ट फ़ोल्डर से `uv run heliograph <कमांड>` के रूप में चलाएँ। `login`, `mcp` और `extract` अलग ब्राउज़र प्रोफ़ाइल के लिए `--account <key>` स्वीकार करते हैं।
 
 <details>
 <summary><b>प्रोजेक्ट संरचना</b></summary>
@@ -296,22 +302,26 @@ Microsoft Store वाला Instagram ऐप एक Edge वेब ऐप ह�
 ```text
 src/heliograph/
 ├── cli.py              # Typer CLI entry point
-├── commands/           # setup, doctor, login, extract
+├── commands/           # setup, doctor, login, extract, dossier.py (show / frames)
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
+├── writelimit.py       # write rate limit shared by every process (lock file + state)
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
 │   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
 ├── instagram/          # models, service, collections, write actions
-├── media/              # allow-listed download, ffmpeg frames, faster-whisper
-├── extract/            # reel -> dossier
+├── media/              # allow-listed download, ffmpeg frames, faster-whisper,
+│                       #   ocr.py (on-screen text), dedupe.py (near-duplicate frames)
+├── extract/            # reel -> dossier; render.py, signals.py (terms, mismatch),
+│                       #   zoom.py (crop + zoom small chart text)
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
 └── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
 scripts/                # setup.ps1 / setup.sh
+.github/workflows/ci.yml # lint, strict types and tests on Windows, macOS and Linux
 .claude/skills/         # extract-trading-strategies, instagram-control
 .mcp.json               # registers the MCP server with Claude Code
 CLAUDE.md               # operating manual for Claude
@@ -325,7 +335,7 @@ CLAUDE.md               # operating manual for Claude
 - [x] पढ़ने, कलेक्शन, एक्सट्रैक्ट, लाइव-ऐप, लिखने और आई टूल्स वाला MCP सर्वर
 - [x] `extract-trading-strategies` और `instagram-control` स्किल
 - [ ] हर लिखने वाली कार्रवाई की लाइव पुष्टि
-- [ ] Windows, macOS और Linux पर CI
+- [x] Windows, macOS और Linux पर CI
 - [ ] Claude सेशन में **मल्टी-अकाउंट** समर्थन (अलग प्रोफ़ाइलें `--account` से पहले ही काम करती हैं)
 - [ ] `adb` के ज़रिए **Android**
 - [ ] **macOS** लाइव-ऐप ड्राइवर (Accessibility API)

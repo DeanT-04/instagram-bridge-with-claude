@@ -28,7 +28,7 @@ Heliograph drives a real, logged-in Instagram session on your own machine and ha
 | **Attaching to someone else's browser** | Before connecting over CDP, Heliograph checks that the DevTools endpoint belongs to the browser it launched with its own profile. |
 | **Local tampering** | Files under `~/.heliograph` are created with private permissions; external tools (ffmpeg, browsers) are resolved without trusting the current directory; `.env` is only loaded from trusted locations. |
 | **Data leaving your machine** | Everything is local by default. The only optional outbound sink is Langfuse, enabled only when you set `LANGFUSE_PUBLIC_KEY` / `LANGFUSE_SECRET_KEY`, and redaction applies before export. |
-| **Supply-chain risk** | Dependencies are pinned in `uv.lock`; `pip-audit` is part of the dev toolchain. |
+| **Supply-chain risk** | Dependencies are pinned in `uv.lock` and installed with `--locked` (setup scripts, and `.mcp.json` starts the server with `uv run --locked`, so a drifted lock fails instead of silently re-resolving); the setup scripts fetch a pinned uv installer version (`https://astral.sh/uv/0.12.1/install.*`) rather than "latest"; `pip-audit` is part of the dev toolchain. |
 
 ## Out of scope
 

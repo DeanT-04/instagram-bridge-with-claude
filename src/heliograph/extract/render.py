@@ -96,7 +96,7 @@ def render_markdown(d: Dossier) -> str:
             f"View `{_rel(d, d.contact_sheet)}` first: all {len(d.frames)} keyframes on one "
             "image, each labelled `#n mm:ss`. Open individual frames for small text, or crop "
             "and zoom a region (`ig_view_frames(..., crop=...)` / "
-            "`heliograph dossier frames <code> --crop`).",
+            "`uv run heliograph dossier frames <code> --crop`).",
             "",
         ]
     if d.ocr:

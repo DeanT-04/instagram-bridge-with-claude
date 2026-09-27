@@ -15,6 +15,7 @@ __all__ = [
 INSTAGRAM_PACKAGE = "Facebook.InstagramBeta"
 INSTAGRAM_AUMID = "Facebook.InstagramBeta_8xx8rvfyw5nnt!App"
 INSTAGRAM_STORE_PRODUCT_ID = "9NBLGGH5L9XT"
+NOT_INSTALLED = "not installed"  # InstagramAppInfo.reason when Get-AppxPackage found nothing
 
 
 class InstagramAppInfo(BaseModel):
@@ -75,6 +76,15 @@ class EnvironmentReport(BaseModel):
     browser_profile_initialized: bool = Field(
         description="True if the dedicated CDP browser profile has been created (login ran)"
     )
+    logged_in: bool | None = Field(
+        default=None,
+        description="Last observed login state of the dedicated profile (None = never checked)",
+    )
+
+    @property
+    def needs_login(self) -> bool:
+        """True when ``heliograph login`` still has to be run (or run again)."""
+        return not self.browser_profile_initialized or self.logged_in is False
 
     @property
     def preferred_browser(self) -> BrowserInfo | None:

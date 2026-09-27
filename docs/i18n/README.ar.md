@@ -7,7 +7,7 @@
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
   <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
-  <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
+  <a href="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
@@ -60,7 +60,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>ملفات الريلز</h3>
-      إطارات رئيسية عند تغيّر المشهد عبر ffmpeg مع إزالة التكرار الإدراكي، وورقة مصغّرات، ونص مفرّغ بواسطة faster-whisper، مجمّعة في ملف Markdown لكل ريل.<br><br><sub><b>متاح</b></sub>
+      إطارات رئيسية عند تغيّر المشهد عبر ffmpeg مع إزالة التكرار الإدراكي، وورقة مصغّرات، ونص مفرّغ بواسطة faster-whisper، مجمّعة في ملف Markdown لكل ريل. يُقرأ النص الظاهر على الشاشة عبر OCR، ويحصل الكلام غير الإنجليزي أيضًا على ترجمة إنجليزية، ويمكن قص الملصقات الصغيرة في الرسوم البيانية وتكبيرها.<br><br><sub><b>متاح</b></sub>
     </td>
   </tr>
   <tr>
@@ -92,8 +92,8 @@ git clone https://github.com/DeanT-04/instagram-bridge-with-claude.git heliograp
 cd heliograph
 
 # 2. Run the one-command setup
-./scripts/setup.ps1        # Windows (PowerShell)
-./scripts/setup.sh         # macOS / Linux
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1   # Windows
+bash scripts/setup.sh                                        # macOS / Linux
 
 # 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
 uv run heliograph login
@@ -104,7 +104,7 @@ claude
 
 </div>
 
-يكتشف Claude Code خادم Heliograph عبر `.mcp.json` ويطلب موافقتك في المرة الأولى. يمكن إعادة تشغيل الإعداد بأمان؛ أضف `--yes` لتخطي الأسئلة أو `--with-whisper` لتنزيل نموذج الكلام مسبقًا (~500 ميغابايت). إن بدا شيء غير صحيح، شغّل `uv run heliograph doctor`.
+يكتشف Claude Code خادم MCP الخاص بـ Heliograph من `.mcp.json` ويطلب موافقتك في المرة الأولى. يحظر Windows الافتراضي تشغيل السكربتات (سياسة التنفيذ *Restricted*)، لذا ابدأ الإعداد بالأمر `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` كما هو موضّح: الاستثناء يسري على هذا التشغيل وحده ولا يغيّر أي إعداد. يمكن إعادة تشغيل الإعداد بأمان. الخيارات على **Windows**: `-Yes` (بلا أسئلة)، و`-NoInput` (لا يسأل أبدًا ويجيب بلا؛ لأنظمة CI)، و`-WithWhisper` (تنزيل نموذج الكلام مسبقًا، ~500 ميغابايت). وعلى **macOS / Linux**: `--yes` و`--no-input` و`--with-whisper`. إذا لم يكن uv مثبتًا، يثبّت السكربت الإصدار uv 0.12.1 عبر المثبّت الرسمي المثبَّت الإصدار بعد سؤالك. إذا بدا شيء غير طبيعي، شغّل `uv run heliograph doctor`.
 
 ## الاستخدام مع Claude
 
@@ -241,8 +241,8 @@ flowchart LR
 
 1. تطلب من Claude: *"استخرج كل الاستراتيجيات من مجموعتي 'Trading strats'."*
 2. يسرد Heliograph محتويات المجموعة عبر المشغّل العميق وينزّل كل ريل من شبكة CDN الخاصة بـ Instagram.
-3. يستخرج خط معالجة الوسائط الإطارات الرئيسية عند تغيّر المشهد (الرسوم البيانية، والإعدادات، والتعليقات التوضيحية)، وورقة مصغّرات، ونصًا مفرّغًا بطوابع زمنية.
-4. يقرأ Claude كل ملف، و**ينظر إلى الإطارات** عبر `ig_view_frames`، ويكتب ملاحظة لكل ريل — قواعد الدخول والخروج وإدارة المخاطر وإعدادات المؤشرات والادعاءات التي لم يتمكن من التحقق منها — إضافة إلى فهرس.
+3. يستخرج خط معالجة الوسائط الإطارات الرئيسية عند تغيّر المشهد (الرسوم البيانية، والإعدادات، والتعليقات التوضيحية)، وورقة مصغّرات، ونصًا مفرّغًا بطوابع زمنية. يُقرأ النص الظاهر في كل إطار رئيسي عبر OCR، ويحصل الكلام غير الإنجليزي على ترجمة إنجليزية.
+4. يقرأ Claude كل ملف، و**ينظر إلى الإطارات** عبر `ig_view_frames`، ويكتب ملاحظة لكل ريل — قواعد الدخول والخروج وإدارة المخاطر وإعدادات المؤشرات والادعاءات التي لم يتمكن من التحقق منها — إضافة إلى فهرس. تُقص الملصقات الصغيرة في الرسوم البيانية وإعدادات المؤشرات وتُكبَّر (`ig_view_frames(..., crop=...)`) وتُقارن بما يُقال.
 
 <div dir="ltr">
 
@@ -251,9 +251,11 @@ flowchart LR
 ├── meta.json          # author, caption, date, URL, metrics
 ├── caption.md
 ├── video.mp4          # or images/NN.jpg for photo posts
-├── transcript.json    # timestamped segments + language
+├── transcript.json    # timestamped segments + language (+ English translation)
 ├── transcript.md
 ├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── ocr.json           # on-screen text of every keyframe (OCR)
+├── crops/             # zoomed regions of small chart text
 ├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
@@ -293,14 +295,18 @@ flowchart LR
 | الأمر | الوظيفة | الحالة |
 |---|---|---|
 | `heliograph setup` | يفحص البيئة، ويقترح حلولًا (Chromium، تطبيق Store)، وينزّل Whisper مسبقًا اختياريًا، ويعرض الخطوات التالية | متاح |
+| `heliograph setup --no-input` | الفحوص نفسها دون أي سؤال (يجيب بلا)؛ للسكربتات وأنظمة CI | متاح |
 | `heliograph doctor` | يكتشف تطبيق Instagram وEdge/Chrome وffmpeg ونظام التشغيل وحالة تسجيل الدخول (`--json` للمخرجات الخام) | متاح |
 | `heliograph login` | يفتح ملف تعريف المتصفح المخصّص لتسجّل الدخول يدويًا مرة واحدة | متاح |
 | `heliograph mcp` | يشغّل خادم MCP عبر stdio (يبدؤه Claude Code نيابةً عنك) | متاح |
 | `heliograph extract <url>` | ينشئ ملفًا لريل/منشور واحد، أو لمجموعة كاملة مع `--collection "<الاسم>"` | متاح |
+| `heliograph dossier show <code>` | يعرض ملفًا جاهزًا: الوصف، والمصطلحات المكتشفة، والخط الزمني للكلام/الإطارات/OCR (يضيف `--transcript` النص المفرّغ) | متاح |
+| `heliograph dossier frames <code>` | يسرد الإطارات الرئيسية مع الطوابع الزمنية والنص الظاهر، أو يحفظ مقتطفات مكبّرة (`--crop`، و`--ocr` اختياريًا) | متاح |
 | `heliograph eye` | سجل حيّ للعين مع مؤشرات الصحة | متاح |
 | `heliograph eye report` | ملخّص للأخطاء والحالات الشاذة الأخيرة | متاح |
+| `heliograph version` | يطبع إصدار Heliograph | متاح |
 
-تقبل معظم الأوامر `--account <مفتاح>` لاستخدام ملف تعريف متصفح منفصل.
+شغّل كل أمر من مجلد المشروع بالصيغة `uv run heliograph <الأمر>`. تقبل الأوامر `login` و`mcp` و`extract` الخيار `--account <مفتاح>` لاستخدام ملف تعريف متصفح منفصل.
 
 <details>
 <summary><b>بنية المشروع</b></summary>
@@ -312,22 +318,26 @@ flowchart LR
 ```text
 src/heliograph/
 ├── cli.py              # Typer CLI entry point
-├── commands/           # setup, doctor, login, extract
+├── commands/           # setup, doctor, login, extract, dossier.py (show / frames)
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
+├── writelimit.py       # write rate limit shared by every process (lock file + state)
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
 │   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
 ├── instagram/          # models, service, collections, write actions
-├── media/              # allow-listed download, ffmpeg frames, faster-whisper
-├── extract/            # reel -> dossier
+├── media/              # allow-listed download, ffmpeg frames, faster-whisper,
+│                       #   ocr.py (on-screen text), dedupe.py (near-duplicate frames)
+├── extract/            # reel -> dossier; render.py, signals.py (terms, mismatch),
+│                       #   zoom.py (crop + zoom small chart text)
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
 └── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
 scripts/                # setup.ps1 / setup.sh
+.github/workflows/ci.yml # lint, strict types and tests on Windows, macOS and Linux
 .claude/skills/         # extract-trading-strategies, instagram-control
 .mcp.json               # registers the MCP server with Claude Code
 CLAUDE.md               # operating manual for Claude
@@ -343,7 +353,7 @@ CLAUDE.md               # operating manual for Claude
 - [x] خادم MCP بأدوات القراءة والمجموعات والاستخراج والتطبيق المباشر والكتابة والعين
 - [x] مهارتا `extract-trading-strategies` و`instagram-control`
 - [ ] التحقق المباشر من كل إجراء كتابة
-- [ ] تكامل مستمر (CI) على Windows وmacOS وLinux
+- [x] تكامل مستمر (CI) على Windows وmacOS وLinux
 - [ ] دعم **الحسابات المتعددة** في جلسات Claude (ملفات التعريف المنفصلة تعمل بالفعل عبر `--account`)
 - [ ] **Android** عبر `adb`
 - [ ] مشغّل التطبيق المباشر لنظام **macOS** (واجهة إمكانية الوصول)

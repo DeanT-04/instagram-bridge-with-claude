@@ -5,6 +5,7 @@ from __future__ import annotations
 import pytest
 
 from heliograph.detect.models import (
+    NOT_INSTALLED,
     BrowserInfo,
     EnvironmentReport,
     InstagramAppInfo,
@@ -17,7 +18,8 @@ from tests.mcp_server.conftest import Harness, json_of
 def report(*, app_installed: bool = False, ffmpeg: bool = False) -> EnvironmentReport:
     return EnvironmentReport(
         os="windows", os_version="Windows-11", python_version="3.12.4",
-        instagram_app=InstagramAppInfo(supported=True, installed=app_installed),
+        instagram_app=InstagramAppInfo(supported=True, installed=app_installed,
+                                       reason=None if app_installed else NOT_INSTALLED),
         browsers=[BrowserInfo(channel="msedge", path="C:/edge.exe", source="registry")],
         ffmpeg=ToolInfo(name="ffmpeg", found=ffmpeg), ffprobe=ToolInfo(name="ffprobe",
                                                                        found=ffmpeg),

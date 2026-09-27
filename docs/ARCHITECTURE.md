@@ -86,7 +86,8 @@ Local-first; no external service required.
   `heliograph.writelimit`).
 - Live app: Enter (any modifiers) or a newline sent to a comment/message box, and Enter/Space on a
   focused write control, need `confirm=True` (driver `press`/`type_text` and MCP `app_type`);
-  the mouse centre-click fallback refuses container-sized elements (>400x200 px).
+  the mouse centre-click fallback refuses container-sized elements (wider than 400 px or
+  taller than 200 px) unless `allow_large`.
 - Downloads only from allow-listed Instagram CDN hosts over HTTPS.
 - DevTools port bound to 127.0.0.1, random free port, recorded in `~/.heliograph/state.json`.
 - No credentials are ever typed, stored or logged by Heliograph.

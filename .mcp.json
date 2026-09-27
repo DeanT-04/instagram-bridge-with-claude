@@ -3,7 +3,7 @@
     "heliograph": {
       "type": "stdio",
       "command": "uv",
-      "args": ["run", "--quiet", "heliograph", "mcp"]
+      "args": ["run", "--locked", "--quiet", "heliograph", "mcp"]
     }
   }
 }

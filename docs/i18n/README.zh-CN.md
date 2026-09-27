@@ -7,7 +7,7 @@
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
   <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
-  <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
+  <a href="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>Reels 档案</h3>
-      使用 ffmpeg 按场景切换提取关键帧并做感知去重，生成缩略图总览，再加上 faster-whisper 转写，每个 Reel 打包成一份 Markdown 档案。<br><br><sub><b>可用</b></sub>
+      使用 ffmpeg 按场景切换提取关键帧并做感知去重，生成缩略图总览，再加上 faster-whisper 转写，每个 Reel 打包成一份 Markdown 档案。屏幕上的文字通过 OCR 读取，非英语语音还会附带英文翻译，图表上的小字标签可以裁剪放大。<br><br><sub><b>可用</b></sub>
     </td>
   </tr>
   <tr>
@@ -88,8 +88,8 @@ git clone https://github.com/DeanT-04/instagram-bridge-with-claude.git heliograp
 cd heliograph
 
 # 2. Run the one-command setup
-./scripts/setup.ps1        # Windows (PowerShell)
-./scripts/setup.sh         # macOS / Linux
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1   # Windows
+bash scripts/setup.sh                                        # macOS / Linux
 
 # 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
 uv run heliograph login
@@ -98,7 +98,7 @@ uv run heliograph login
 claude
 ```
 
-Claude Code 会从 `.mcp.json` 发现 Heliograph MCP 服务器，并在第一次使用时请你批准。安装脚本可以放心重复运行；加 `--yes` 跳过提问，加 `--with-whisper` 预先下载语音模型（约 500 MB）。如有异常，运行 `uv run heliograph doctor`。
+Claude Code 会通过 `.mcp.json` 发现 Heliograph MCP 服务器，并在第一次使用时请你批准。默认的 Windows 会阻止脚本运行（执行策略为 *Restricted*），所以请按上面的方式用 `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1` 启动安装：这个例外只对这一次运行有效，不会修改任何设置。安装可以放心重复运行。**Windows** 选项：`-Yes`（不提问）、`-NoInput`（从不提问，一律回答否；用于 CI）、`-WithWhisper`（预先下载语音模型，约 500 MB）。**macOS / Linux**：`--yes`、`--no-input`、`--with-whisper`。如果没有 uv，脚本会在征得同意后用固定版本的官方安装程序安装 uv 0.12.1。如有异常，运行 `uv run heliograph doctor`。
 
 ## 与 Claude 一起使用
 
@@ -231,17 +231,19 @@ Microsoft Store 版 Instagram 应用是一个运行在你日常 Edge 配置文�
 
 1. 你对 Claude 说：*"把我 'Trading strats' 收藏夹里的每个策略都提取出来。"*
 2. Heliograph 通过深度驱动列出收藏夹内容，并从 Instagram 的 CDN 下载每个 Reel。
-3. 媒体流水线按场景切换提取关键帧（图表、交易设置、标注），生成缩略图总览和带时间戳的转写文本。
-4. Claude 阅读每份档案，用 `ig_view_frames` **查看画面**，为每个 Reel 写一篇笔记——入场规则、出场规则、风险管理、指标参数，以及它无法核实的说法——并附上一个索引。
+3. 媒体流水线按场景切换提取关键帧（图表、交易设置、标注），生成缩略图总览和带时间戳的转写文本。每个关键帧的屏幕文字都会通过 OCR 读取，非英语语音会附带英文翻译。
+4. Claude 阅读每份档案，用 `ig_view_frames` **查看画面**，为每个 Reel 写一篇笔记——入场规则、出场规则、风险管理、指标参数，以及它无法核实的说法——并附上一个索引。图表上的小字标签和指标参数会被裁剪放大（`ig_view_frames(..., crop=...)`），并与口述内容相互核对。
 
 ```text
 ~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
 ├── caption.md
 ├── video.mp4          # or images/NN.jpg for photo posts
-├── transcript.json    # timestamped segments + language
+├── transcript.json    # timestamped segments + language (+ English translation)
 ├── transcript.md
 ├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── ocr.json           # on-screen text of every keyframe (OCR)
+├── crops/             # zoomed regions of small chart text
 ├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
@@ -279,14 +281,18 @@ Microsoft Store 版 Instagram 应用是一个运行在你日常 Edge 配置文�
 | 命令 | 作用 | 状态 |
 |---|---|---|
 | `heliograph setup` | 检查环境，提供修复建议（Chromium、Store 应用），可选预下载 Whisper，并提示后续步骤 | 可用 |
+| `heliograph setup --no-input` | 同样的检查，但全程不提问（一律回答否）；用于脚本和 CI | 可用 |
 | `heliograph doctor` | 检测 Instagram 应用、Edge/Chrome、ffmpeg、操作系统和登录状态（`--json` 输出原始数据） | 可用 |
 | `heliograph login` | 打开专用浏览器配置文件，供你手动登录一次 | 可用 |
 | `heliograph mcp` | 通过 stdio 运行 MCP 服务器（Claude Code 会替你启动） | 可用 |
 | `heliograph extract <url>` | 为单个 Reel/帖子生成档案，或用 `--collection "<名称>"` 处理整个收藏夹 | 可用 |
+| `heliograph dossier show <code>` | 显示已生成的档案：说明文字、识别出的术语、语音/画面/OCR 时间线（`--transcript` 附带转写） | 可用 |
+| `heliograph dossier frames <code>` | 列出关键帧及其时间戳和屏幕文字，或保存放大的裁剪图（`--crop`，可选 `--ocr`） | 可用 |
 | `heliograph eye` | 天眼实时事件流及健康指标 | 可用 |
 | `heliograph eye report` | 近期错误与异常摘要 | 可用 |
+| `heliograph version` | 显示 Heliograph 版本 | 可用 |
 
-大多数命令支持 `--account <key>`，以使用独立的浏览器配置文件。
+请在项目文件夹中以 `uv run heliograph <命令>` 的形式运行每条命令。`login`、`mcp` 和 `extract` 支持 `--account <键>` 以使用单独的浏览器配置文件。
 
 <details>
 <summary><b>项目结构</b></summary>
@@ -296,22 +302,26 @@ Microsoft Store 版 Instagram 应用是一个运行在你日常 Edge 配置文�
 ```text
 src/heliograph/
 ├── cli.py              # Typer CLI entry point
-├── commands/           # setup, doctor, login, extract
+├── commands/           # setup, doctor, login, extract, dossier.py (show / frames)
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
+├── writelimit.py       # write rate limit shared by every process (lock file + state)
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
 │   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
 ├── instagram/          # models, service, collections, write actions
-├── media/              # allow-listed download, ffmpeg frames, faster-whisper
-├── extract/            # reel -> dossier
+├── media/              # allow-listed download, ffmpeg frames, faster-whisper,
+│                       #   ocr.py (on-screen text), dedupe.py (near-duplicate frames)
+├── extract/            # reel -> dossier; render.py, signals.py (terms, mismatch),
+│                       #   zoom.py (crop + zoom small chart text)
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
 └── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
 scripts/                # setup.ps1 / setup.sh
+.github/workflows/ci.yml # lint, strict types and tests on Windows, macOS and Linux
 .claude/skills/         # extract-trading-strategies, instagram-control
 .mcp.json               # registers the MCP server with Claude Code
 CLAUDE.md               # operating manual for Claude
@@ -325,7 +335,7 @@ CLAUDE.md               # operating manual for Claude
 - [x] 提供读取、收藏夹、提取、实时应用、写入和天眼工具的 MCP 服务器
 - [x] `extract-trading-strategies` 与 `instagram-control` 技能
 - [ ] 逐一实测每个写操作
-- [ ] Windows、macOS 和 Linux 上的 CI
+- [x] Windows、macOS 和 Linux 上的 CI
 - [ ] 在 Claude 会话中支持**多账号**（独立配置文件已可通过 `--account` 使用）
 - [ ] 通过 `adb` 支持 **Android**
 - [ ] **macOS** 实时应用驱动（辅助功能 API）

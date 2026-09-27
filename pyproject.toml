@@ -29,6 +29,10 @@ dependencies = [
     "imagehash>=4.3,<5",
     "uiautomation>=2.0.20; sys_platform == 'win32'",
     "pywin32>=306; sys_platform == 'win32'",
+    # faster-whisper needs onnxruntime, which stopped shipping Intel-macOS wheels after
+    # 1.23: pin the last release that has them there (other platforms stay on latest).
+    "onnxruntime<1.24; sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "onnxruntime>=1.24; sys_platform != 'darwin' or platform_machine != 'x86_64'",
 ]
 
 [project.scripts]
@@ -59,6 +63,14 @@ dev = [
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/heliograph"]
+
+[tool.uv]
+required-environments = [
+    "sys_platform == 'darwin' and platform_machine == 'x86_64'",
+    "sys_platform == 'darwin' and platform_machine == 'arm64'",
+    "sys_platform == 'linux' and platform_machine == 'x86_64'",
+    "sys_platform == 'win32' and platform_machine == 'AMD64'",
+]
 
 [tool.ruff]
 line-length = 100

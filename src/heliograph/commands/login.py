@@ -36,5 +36,5 @@ def run_login(console: Console, *, account: str = "default", timeout: float = 30
         console.print(f"[green]✓ Logged in[/] (profile: {account}). You can keep or close the "
                       "window; Heliograph reopens it when Claude needs it.")
     else:
-        console.print("[red]Timed out waiting for sign-in.[/] Run `heliograph login` again.")
+        console.print("[red]Timed out waiting for sign-in.[/] Run `uv run heliograph login` again.")
     return ok

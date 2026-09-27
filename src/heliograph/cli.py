@@ -57,7 +57,9 @@ def doctor(
     """Check this machine and explain how to fix anything missing."""
     report = detect_environment()
     if as_json:
-        typer.echo(json.dumps(report.model_dump(mode="json"), indent=2))
+        data = report.model_dump(mode="json")
+        data["needs_login"] = report.needs_login  # used by scripts/setup.*
+        typer.echo(json.dumps(data, indent=2))
     else:
         render_report(report, console)
         if report.ok:

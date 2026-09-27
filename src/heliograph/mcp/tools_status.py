@@ -8,6 +8,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from heliograph import __version__
+from heliograph.detect.models import NOT_INSTALLED
 from heliograph.mcp.common import LOCAL, tool
 from heliograph.mcp.runtime import Runtime
 
@@ -35,7 +36,7 @@ def setup_steps(report: Any, *, logged_in: bool | None) -> list[dict[str, str]]:
                                 "Instagram yourself in the window that opens (one time).",
                       "why": "Heliograph never sees your password; it reuses that session."})
     app = report.instagram_app
-    if app.supported and not app.installed:
+    if app.supported and not app.installed and app.reason == NOT_INSTALLED:
         steps.append({"item": "instagram_app",
                       "action": f"Optional: install the Instagram app from the Microsoft Store "
                                 f"({STORE_WEB_URL}). Call heliograph_setup_check with "
@@ -48,19 +49,32 @@ def register(server: FastMCP, rt: Runtime) -> None:
     """Register the status tools."""
 
     async def _login_state() -> tuple[bool | None, str]:
+        """Login state without launching or attaching to anything.
+
+        Attaching Playwright to a running browser costs ~5 s, so a browser this server is
+        not already connected to is reported with the last state Heliograph observed.
+        """
         driver = rt.cdp_driver()
+        if await rt.cdp_connected():
+            try:
+                ok = await driver.is_logged_in()
+            except Exception as exc:
+                return None, f"could not read the session: {exc}"
+            return ok, "logged in" if ok else "browser open but not logged in"
         try:
             running = await asyncio.to_thread(driver.launcher.find_running)
         except Exception as exc:
             return None, f"could not check the browser: {exc}"
-        if running is None and not await rt.cdp_connected():
+        if running is None:
             return None, "dedicated browser not running (starts on the first ig_* call)"
         try:
-            await driver.connect()
-            ok = await driver.is_logged_in()
-        except Exception as exc:
-            return None, f"could not attach to the browser: {exc}"
-        return ok, "logged in" if ok else "browser open but not logged in"
+            last = driver.launcher.last_login()
+        except Exception:
+            last = None
+        if last is None:
+            return None, "browser running; login not checked yet (checked on the first ig_* call)"
+        state = "logged in" if last else "not logged in"
+        return last, f"browser running; last observed: {state} (not re-attached for speed)"
 
     @tool(server, annotations=LOCAL)
     async def heliograph_status() -> dict[str, Any]:
@@ -74,8 +88,8 @@ def register(server: FastMCP, rt: Runtime) -> None:
         """
         from heliograph.detect import detect_environment
 
-        report = await asyncio.to_thread(detect_environment)
-        logged_in, login_detail = await _login_state()
+        report, (logged_in, login_detail) = await asyncio.gather(
+            asyncio.to_thread(detect_environment), _login_state())
         app = report.instagram_app
         return {
             "version": __version__,
@@ -107,15 +121,17 @@ def register(server: FastMCP, rt: Runtime) -> None:
         """
         from heliograph.detect import detect_environment, install_instagram_app
 
-        report = await asyncio.to_thread(detect_environment, check_window=False)
-        logged_in, _ = await _login_state()
+        report, (logged_in, _) = await asyncio.gather(
+            asyncio.to_thread(detect_environment, check_window=False), _login_state())
         steps = setup_steps(report, logged_in=logged_in)
         out: dict[str, Any] = {"done": not steps, "steps": steps}
         if open_store:
-            if report.instagram_app.supported and not report.instagram_app.installed:
+            app = report.instagram_app
+            if app.supported and not app.installed and app.reason == NOT_INSTALLED:
                 out["store"] = await asyncio.to_thread(install_instagram_app)
             else:
-                out["store"] = "Not opened: the Instagram app is installed or not supported."
+                out["store"] = ("Not opened: the Instagram app is installed, not supported, or "
+                                f"its check failed ({app.reason or 'installed'}).")
         if not steps:
             out["message"] = "Everything is set up."
         return out

@@ -2,9 +2,9 @@
 
 * :func:`click` — ``InvokePattern`` first (works without focus or a visible cursor), then
   falls back to scrolling the element into view and clicking its bounding-rect centre.
-  The centre-click fallback is refused for container-sized elements (both sides above
-  :data:`MAX_MOUSE_TARGET`): the centre of a feed/article is some arbitrary child, e.g.
-  a Like button, unless ``allow_large=True``.
+  The centre-click fallback is refused for container-sized elements (either side above
+  :data:`MAX_MOUSE_TARGET`): the centre of a feed/article/action bar is some arbitrary
+  child, e.g. a Like button, unless ``allow_large=True``.
 * :func:`type_text` / :func:`press_keys` — focus then ``SendKeys`` (real keystrokes, so
   React inputs see proper input events; ``ValuePattern.SetValue`` would not).
 * :func:`scroll_element` — ``ScrollPattern`` (no focus needed); :func:`scroll_keys` —
@@ -35,7 +35,8 @@ __all__ = [
 
 ClickMethod = Literal["invoke", "mouse"]
 MAX_MOUSE_TARGET = (400, 200)
-"""``(width, height)`` in px: larger elements are containers, never centre-clicked."""
+"""``(width, height)`` in px: an element wider *or* taller is treated as a container and
+never centre-clicked (unless ``allow_large``)."""
 
 
 def _control(element: Any) -> Any:
@@ -57,7 +58,7 @@ def escape_keys(text: str) -> str:
 def check_mouse_target(width: int, height: int, name: str, *, allow_large: bool) -> None:
     """Refuse a centre click on a container-sized element (see module docstring)."""
     max_w, max_h = MAX_MOUSE_TARGET
-    if not allow_large and width > max_w and height > max_h:
+    if not allow_large and (width > max_w or height > max_h):
         raise UnsafeActionError(
             f"refusing to mouse-click the centre of {name!r} ({width}x{height}px): it is a "
             "container, the click would land on an arbitrary child",

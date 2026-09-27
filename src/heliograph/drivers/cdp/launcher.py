@@ -209,6 +209,24 @@ class BrowserLauncher:
         devtools.write_state(self.settings.state_file, cdp=accounts)
         return ep
 
+    def record_login(self, logged_in: bool) -> None:
+        """Remember the last observed login state (read by ``heliograph_status``/doctor
+        without attaching to the browser). Only writes when the value changes."""
+        accounts = self._accounts_state()
+        prev = accounts.get(self.account)
+        entry: dict[str, object] = dict(prev) if isinstance(prev, dict) else {}
+        if entry.get("logged_in") is logged_in:
+            return
+        entry.update(logged_in=logged_in, login_checked=time.time())
+        accounts[self.account] = entry
+        devtools.write_state(self.settings.state_file, cdp=accounts)
+
+    def last_login(self) -> bool | None:
+        """Login state recorded by :meth:`record_login`, or None if never observed."""
+        entry = self._accounts_state().get(self.account)
+        value = entry.get("logged_in") if isinstance(entry, dict) else None
+        return value if isinstance(value, bool) else None
+
     def _forget(self) -> None:
         accounts = self._accounts_state()
         accounts.pop(self.account, None)

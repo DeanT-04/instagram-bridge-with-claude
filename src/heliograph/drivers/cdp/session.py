@@ -99,7 +99,7 @@ class CdpDriver:
             if endpoint is None:
                 raise DriverUnavailableError(
                     "No Heliograph browser is running for this profile",
-                    hint="Run `heliograph login` to start it.")
+                    hint="Run `uv run heliograph login` to start it.")
             from playwright.async_api import async_playwright
 
             if self._pw is None:
@@ -185,7 +185,12 @@ class CdpDriver:
             has_session = any(c.get("name") == "sessionid" and c.get("value") for c in cookies)
             on_login = "/accounts/login" in self.page.url
             s.set(has_session=has_session, on_login=on_login)
-            return has_session and not on_login
+            ok = has_session and not on_login
+            try:
+                self.launcher.record_login(ok)
+            except Exception:  # best effort: state.json is only a cache for status/doctor
+                pass
+            return ok
 
     async def viewer_id(self) -> str | None:
         """Numeric id of the logged-in user (``ds_user_id`` cookie), if present."""

@@ -7,7 +7,7 @@
   <a href="../../LICENSE"><img alt="License: MIT" src="https://img.shields.io/badge/license-MIT-E0A526?style=flat-square&labelColor=0B1026"></a>
   <a href="#platform-support"><img alt="Platform: Windows | macOS | Linux" src="https://img.shields.io/badge/platform-Windows%20%7C%20macOS%20%7C%20Linux-FF6B5A?style=flat-square&labelColor=0B1026"></a>
   <a href="#mcp-tools"><img alt="MCP: 41 tools" src="https://img.shields.io/badge/MCP-41%20tools-F4EBD9?style=flat-square&labelColor=0B1026"></a>
-  <a href="../../CONTRIBUTING.md#tests"><img alt="Tests: pytest" src="https://img.shields.io/badge/tests-pytest-2A3150?style=flat-square&labelColor=0B1026&logo=pytest&logoColor=F4EBD9"></a>
+  <a href="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml"><img alt="CI" src="https://github.com/DeanT-04/instagram-bridge-with-claude/actions/workflows/ci.yml/badge.svg"></a>
 </p>
 
 <p align="center">
@@ -58,7 +58,7 @@
     </td>
     <td width="33%" valign="top">
       <h3>릴스 도시에</h3>
-      ffmpeg 장면 전환 키프레임(지각 해시로 중복 제거), 콘택트 시트, faster-whisper 자막을 릴스마다 하나의 Markdown 도시에로 묶습니다.<br><br><sub><b>사용 가능</b></sub>
+      ffmpeg 장면 전환 키프레임(지각 해시로 중복 제거), 콘택트 시트, faster-whisper 자막을 릴스마다 하나의 Markdown 도시에로 묶습니다. 화면의 글자는 OCR로 읽고, 영어가 아닌 음성에는 영어 번역도 붙으며, 차트의 작은 라벨은 잘라서 확대할 수 있습니다.<br><br><sub><b>사용 가능</b></sub>
     </td>
   </tr>
   <tr>
@@ -88,8 +88,8 @@ git clone https://github.com/DeanT-04/instagram-bridge-with-claude.git heliograp
 cd heliograph
 
 # 2. Run the one-command setup
-./scripts/setup.ps1        # Windows (PowerShell)
-./scripts/setup.sh         # macOS / Linux
+powershell -ExecutionPolicy Bypass -File scripts\setup.ps1   # Windows
+bash scripts/setup.sh                                        # macOS / Linux
 
 # 3. Sign in to Instagram once, yourself, in Heliograph's own browser window
 uv run heliograph login
@@ -98,7 +98,7 @@ uv run heliograph login
 claude
 ```
 
-Claude Code는 `.mcp.json`에서 Heliograph MCP 서버를 찾아 처음 한 번 승인을 요청합니다. 설치는 여러 번 실행해도 안전합니다. 질문을 건너뛰려면 `--yes`, 음성 모델(~500 MB)을 미리 받으려면 `--with-whisper`를 붙이세요. 문제가 있어 보이면 `uv run heliograph doctor`를 실행하세요.
+Claude Code는 `.mcp.json`에서 Heliograph MCP 서버를 찾아 처음 한 번 승인을 요청합니다. 기본 Windows는 스크립트 실행을 막으므로(실행 정책 *Restricted*) 위와 같이 `powershell -ExecutionPolicy Bypass -File scripts\setup.ps1`로 설정을 시작하세요. 이 예외는 그 한 번의 실행에만 적용되며 어떤 설정도 바꾸지 않습니다. 설정은 언제든 안전하게 다시 실행할 수 있습니다. **Windows** 옵션: `-Yes`(질문 없음), `-NoInput`(절대 묻지 않고 '아니요'로 응답, CI용), `-WithWhisper`(음성 모델 약 500 MB 미리 다운로드). **macOS / Linux**: `--yes`, `--no-input`, `--with-whisper`. uv가 없으면 스크립트가 먼저 물어본 뒤 버전이 고정된 공식 설치 프로그램으로 uv 0.12.1을 설치합니다. 뭔가 이상하면 `uv run heliograph doctor`를 실행하세요.
 
 ## Claude와 함께 사용하기
 
@@ -231,17 +231,19 @@ Microsoft Store Instagram 앱은 평소 쓰는 Edge 프로필에서 실행되는
 
 1. Claude에게 요청합니다: *"'Trading strats' 컬렉션의 모든 전략을 추출해 줘."*
 2. Heliograph가 딥 드라이버로 컬렉션 목록을 가져오고, 각 릴스를 Instagram CDN에서 다운로드합니다.
-3. 미디어 파이프라인이 장면 전환 키프레임(차트, 셋업, 주석), 콘택트 시트, 타임스탬프가 있는 자막을 추출합니다.
-4. Claude는 각 도시에를 읽고 `ig_view_frames`로 **프레임을 직접 보며**, 릴스마다 노트를 씁니다 — 진입 규칙, 청산, 리스크 관리, 지표 설정, 그리고 검증할 수 없었던 주장 — 그리고 색인도 만듭니다.
+3. 미디어 파이프라인이 장면 전환 키프레임(차트, 셋업, 주석), 콘택트 시트, 타임스탬프가 있는 자막을 추출합니다. 각 키프레임의 화면 글자를 OCR로 읽고, 영어가 아닌 음성에는 영어 번역을 붙입니다.
+4. Claude는 각 도시에를 읽고 `ig_view_frames`로 **프레임을 직접 보며**, 릴스마다 노트를 씁니다 — 진입 규칙, 청산, 리스크 관리, 지표 설정, 그리고 검증할 수 없었던 주장 — 그리고 색인도 만듭니다. 차트의 작은 라벨과 지표 설정값은 잘라서 확대하고(`ig_view_frames(..., crop=...)`) 말한 내용과 대조합니다.
 
 ```text
 ~/.heliograph/dossiers/<creator>/<code>/
 ├── meta.json          # author, caption, date, URL, metrics
 ├── caption.md
 ├── video.mp4          # or images/NN.jpg for photo posts
-├── transcript.json    # timestamped segments + language
+├── transcript.json    # timestamped segments + language (+ English translation)
 ├── transcript.md
 ├── frames/*.jpg       # de-duplicated keyframes (+ frames.json)
+├── ocr.json           # on-screen text of every keyframe (OCR)
+├── crops/             # zoomed regions of small chart text
 ├── contact_sheet.jpg  # every keyframe on one image
 └── dossier.md         # everything above, stitched for Claude
 ```
@@ -279,14 +281,18 @@ Microsoft Store Instagram 앱은 평소 쓰는 Edge 프로필에서 실행되는
 | 명령 | 설명 | 상태 |
 |---|---|---|
 | `heliograph setup` | 환경을 점검하고 해결책(Chromium, Store 앱)을 제안하며, 선택적으로 Whisper를 미리 받고 다음 단계를 안내 | 사용 가능 |
+| `heliograph setup --no-input` | 같은 점검을 질문 없이 실행('아니요'로 응답); 스크립트와 CI용 | 사용 가능 |
 | `heliograph doctor` | Instagram 앱, Edge/Chrome, ffmpeg, 운영체제, 로그인 상태 감지(원본 출력은 `--json`) | 사용 가능 |
 | `heliograph login` | 전용 브라우저 프로필을 열어 한 번 직접 로그인 | 사용 가능 |
 | `heliograph mcp` | stdio로 MCP 서버 실행(Claude Code가 대신 시작) | 사용 가능 |
 | `heliograph extract <url>` | 릴스/게시물 하나의 도시에 생성, `--collection "<이름>"`이면 컬렉션 전체 | 사용 가능 |
+| `heliograph dossier show <code>` | 만들어진 도시에를 출력: 캡션, 감지된 용어, 음성/프레임/OCR 타임라인(`--transcript`는 자막도 출력) | 사용 가능 |
+| `heliograph dossier frames <code>` | 키프레임을 타임스탬프와 화면 글자와 함께 나열하거나 확대한 잘라낸 이미지를 저장(`--crop`, 선택적으로 `--ocr`) | 사용 가능 |
 | `heliograph eye` | 상태 표시가 포함된 The Eye 실시간 보기 | 사용 가능 |
 | `heliograph eye report` | 최근 오류와 이상 징후 요약 | 사용 가능 |
+| `heliograph version` | Heliograph 버전을 출력 | 사용 가능 |
 
-대부분의 명령은 별도 브라우저 프로필을 쓰기 위한 `--account <키>`를 지원합니다.
+모든 명령은 프로젝트 폴더에서 `uv run heliograph <명령>` 형태로 실행하세요. `login`, `mcp`, `extract`는 별도 브라우저 프로필을 쓰기 위한 `--account <키>`를 받습니다.
 
 <details>
 <summary><b>프로젝트 구조</b></summary>
@@ -296,22 +302,26 @@ Microsoft Store Instagram 앱은 평소 쓰는 Edge 프로필에서 실행되는
 ```text
 src/heliograph/
 ├── cli.py              # Typer CLI entry point
-├── commands/           # setup, doctor, login, extract
+├── commands/           # setup, doctor, login, extract, dossier.py (show / frames)
 ├── config.py           # settings (env prefix HELIOGRAPH_), paths under ~/.heliograph
 ├── errors.py           # HeliographError hierarchy
+├── writelimit.py       # write rate limit shared by every process (lock file + state)
 ├── detect/             # environment detection: Store app, browsers, ffmpeg, OS
 ├── drivers/
 │   ├── base.py         # InstagramDriver protocol + shared dataclasses
 │   ├── uia/            # Windows UI Automation live-app driver
 │   └── cdp/            # browser launcher, CDP session, web-API client, rate limits
 ├── instagram/          # models, service, collections, write actions
-├── media/              # allow-listed download, ffmpeg frames, faster-whisper
-├── extract/            # reel -> dossier
+├── media/              # allow-listed download, ffmpeg frames, faster-whisper,
+│                       #   ocr.py (on-screen text), dedupe.py (near-duplicate frames)
+├── extract/            # reel -> dossier; render.py, signals.py (terms, mismatch),
+│                       #   zoom.py (crop + zoom small chart text)
 ├── eye/                # the Eye: spans, sinks, redaction, live view, reports
 └── mcp/                # FastMCP server, tools_*.py per family, runtime, common
 tests/                  # pytest; live tests marked @pytest.mark.live
 docs/                   # architecture, security, translations, brand assets
 scripts/                # setup.ps1 / setup.sh
+.github/workflows/ci.yml # lint, strict types and tests on Windows, macOS and Linux
 .claude/skills/         # extract-trading-strategies, instagram-control
 .mcp.json               # registers the MCP server with Claude Code
 CLAUDE.md               # operating manual for Claude
@@ -325,7 +335,7 @@ CLAUDE.md               # operating manual for Claude
 - [x] 읽기, 컬렉션, 추출, 라이브 앱, 쓰기, Eye 도구를 갖춘 MCP 서버
 - [x] `extract-trading-strategies`와 `instagram-control` 스킬
 - [ ] 모든 쓰기 작업의 실시간 검증
-- [ ] Windows, macOS, Linux에서 CI
+- [x] Windows, macOS, Linux에서 CI
 - [ ] Claude 세션에서 **다중 계정** 지원(별도 프로필은 이미 `--account`로 사용 가능)
 - [ ] `adb`를 통한 **Android** 지원
 - [ ] **macOS** 라이브 앱 드라이버(접근성 API)

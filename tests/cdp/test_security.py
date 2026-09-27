@@ -138,13 +138,13 @@ def test_probe_rejects_non_local_websocket(monkeypatch: pytest.MonkeyPatch) -> N
         return httpx.Response(200, json={"Browser": "x",
                                          "webSocketDebuggerUrl": "ws://evil.com:9222/devtools/x"})
 
-    monkeypatch.setattr(devtools.httpx, "get", fake_get)
+    monkeypatch.setattr(devtools, "_http_get", fake_get)
     assert devtools.probe_endpoint(9222) is None
 
     def good_get(url: str, timeout: float) -> httpx.Response:
         return httpx.Response(200, json={
             "Browser": "x", "webSocketDebuggerUrl": "ws://127.0.0.1:9222/devtools/browser/a"})
 
-    monkeypatch.setattr(devtools.httpx, "get", good_get)
+    monkeypatch.setattr(devtools, "_http_get", good_get)
     ep = devtools.probe_endpoint(9222)
     assert ep is not None and ep.port == 9222

@@ -19,10 +19,14 @@ env:
 
 jobs:
   lint:
-    name: Lint & types (windows)
-    # mypy runs on Windows only for now: drivers/uia/screenshot.py uses ctypes.windll,
-    # which mypy flags on other platforms. Move this to the matrix once that is guarded.
-    runs-on: windows-latest
+    name: Lint & types (${{ matrix.os }})
+    # mypy runs on every OS: platform-specific code (ctypes.windll, winreg...) is guarded
+    # with `sys.platform` checks so strict type-checking is clean everywhere.
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@v4
