@@ -36,9 +36,17 @@ def test_env_overrides(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     assert s.log_level == "DEBUG" and s.write_min_interval == 30
 
 
-def test_dotenv_file_is_read(tmp_path: Path) -> None:
+def test_cwd_dotenv_is_ignored(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    """A .env in the working directory (e.g. a cloned repo) must not be trusted."""
+    monkeypatch.chdir(tmp_path)
     (tmp_path / ".env").write_text("HELIOGRAPH_WHISPER_MODEL=tiny\n", encoding="utf-8")
-    assert Settings().whisper_model == "tiny"
+    assert Settings().whisper_model != "tiny"
+
+
+def test_explicit_env_file_is_read(tmp_path: Path) -> None:
+    env = tmp_path / "user.env"
+    env.write_text("HELIOGRAPH_WHISPER_MODEL=tiny\n", encoding="utf-8")
+    assert Settings(_env_file=env).whisper_model == "tiny"  # type: ignore[call-arg]
 
 
 @pytest.mark.parametrize(
