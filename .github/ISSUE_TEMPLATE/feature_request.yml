@@ -1,0 +1,24 @@
+name: Feature request
+description: Suggest an idea or improvement for Heliograph.
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      description: Describe the workflow you're trying to achieve with Claude and Instagram.
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed solution
+      description: New MCP tool, CLI command, driver capability, etc.
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: This works on the user's own account only and doesn't target other people's accounts or data.
+          required: true
+        - label: If it performs a write action (like, follow, comment, DM, post), it can require explicit confirmation.
