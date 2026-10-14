@@ -16,7 +16,16 @@ public static class PrivateDirectory
             Directory.CreateDirectory(path);
             return path;
         }
-        Directory.CreateDirectory(path, OwnerOnly);
+        // Directory.CreateDirectory(path, mode) gives only the leaf that mode, so create each missing level.
+        var missing = new Stack<string>();
+        for (var dir = Path.GetFullPath(path); dir is not null && !Directory.Exists(dir); dir = Path.GetDirectoryName(dir))
+        {
+            missing.Push(dir);
+        }
+        foreach (var dir in missing)
+        {
+            Directory.CreateDirectory(dir, OwnerOnly);
+        }
         try
         {
             File.SetUnixFileMode(path, OwnerOnly);
