@@ -5,10 +5,8 @@ using System.Text;
 namespace Heliograph.Core;
 
 /// <summary>
-/// An exclusive lock file usable across processes. The holder writes a <c>pid:nonce</c> token and
-/// re-reads it, so it proceeds only while the file is provably its own. A lock older than
-/// <c>staleAfter</c> is broken by renaming it to a unique tomb (only one breaker can win a rename)
-/// and is put back if the tomb turns out to hold a live token. Release removes only our own lock.
+/// An exclusive lock file usable across processes. A lock older than <c>staleAfter</c> is broken.
+/// Release removes only our own lock.
 /// </summary>
 public sealed class FileLock(
     string path, TimeSpan? timeout = null, TimeSpan? staleAfter = null, TimeSpan? poll = null)
@@ -52,9 +50,11 @@ public sealed class FileLock(
             Unlink(tomb);
             return;
         }
-        // The lock was replaced between the staleness check and the rename, so it is live: put it
-        // back unless someone created a new lock meanwhile, in which case its owner sees the token
-        // change and retries.
+        RestoreLiveLockUnlessReplaced(tomb);
+    }
+
+    private void RestoreLiveLockUnlessReplaced(string tomb)
+    {
         try
         {
             File.Move(tomb, Path, overwrite: false);

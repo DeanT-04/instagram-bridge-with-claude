@@ -7,9 +7,7 @@ namespace Heliograph.Core;
 
 /// <summary>
 /// <c>minInterval + U(0, jitter)</c> between writes, shared by every Heliograph process through
-/// <c>ratelimit.json</c> under a <see cref="FileLock"/>. A write reserves a slot: under the lock it reads
-/// <c>next_allowed</c>, takes <c>max(now, next_allowed)</c> and stores <c>slot + gap</c>. The lock is
-/// never held while sleeping, so concurrent writers queue in slot order.
+/// <c>ratelimit.json</c>. Concurrent writers queue in reservation order.
 /// </summary>
 public sealed class WriteLimiter(
     HeliographSettings settings,
@@ -23,7 +21,7 @@ public sealed class WriteLimiter(
     TimeSpan? lockTimeout = null,
     Action<string>? log = null)
 {
-    private static readonly double FarFutureCap = TimeSpan.FromHours(24).TotalSeconds;
+    private static readonly double MaxTrustedWaitSeconds = TimeSpan.FromHours(24).TotalSeconds;
 
     private readonly TimeSpan _minInterval = minInterval ?? settings.WriteMinInterval;
     private readonly TimeSpan _jitter = jitter ?? settings.WriteJitter;
@@ -76,8 +74,7 @@ public sealed class WriteLimiter(
             using (new FileLock(Path + ".lock", _lockTimeout).Hold())
             {
                 var now = _clock();
-                // A far-future value (clock change, corrupted file) must not block forever.
-                var nextAllowed = Math.Min(ReadNextAllowed(), now + FarFutureCap);
+                var nextAllowed = Math.Min(ReadNextAllowed(), now + MaxTrustedWaitSeconds);
                 var wait = Math.Max(0.0, nextAllowed - now);
                 if (wait > 0 && !block)
                 {
