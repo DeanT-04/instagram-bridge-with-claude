@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using Heliograph.Core.Config;
 
 namespace Heliograph.Core.Tests;
@@ -285,6 +286,62 @@ public sealed class ConfigTests : IDisposable
                 Env(("HELIOGRAPH_CDP_PORT", "-5"), ("HELIOGRAPH_OCR_ENGINE", "tesseract")), envFile: null));
 
         Assert.Equal(2, error.Errors.Count);
+    }
+
+    private string LinkTo(string target, string name)
+    {
+        var link = _tmp.Path(name);
+        try
+        {
+            Directory.CreateSymbolicLink(link, target);
+        }
+        catch (Exception e) when (e is UnauthorizedAccessException or IOException)
+        {
+            using var mklink = Process.Start(new ProcessStartInfo("cmd.exe", ["/c", "mklink", "/J", link, target])
+            {
+                RedirectStandardOutput = true,
+                RedirectStandardError = true,
+            })!;
+            mklink.WaitForExit();
+            Assert.Equal(0, mklink.ExitCode);
+        }
+        return link;
+    }
+
+    [Fact]
+    public void Home_that_is_a_link_resolves_to_its_target()
+    {
+        var real = Directory.CreateDirectory(_tmp.Path("real")).FullName;
+        var link = LinkTo(real, "link");
+
+        var s = HeliographSettings.Load(Env(("HELIOGRAPH_HOME", link)), envFile: null);
+
+        Assert.Equal(real, s.Home);
+        Assert.Equal(Path.Combine(real, "dossiers"), s.DossierPath);
+    }
+
+    [Fact]
+    public void A_linked_parent_of_a_missing_path_resolves_and_keeps_the_missing_tail()
+    {
+        var real = Directory.CreateDirectory(_tmp.Path("real")).FullName;
+        var link = LinkTo(real, "link");
+
+        var s = HeliographSettings.Load(
+            Env(("HELIOGRAPH_EYE_DIR", Path.Combine(link, "not", "yet"))), envFile: null);
+
+        Assert.Equal(Path.Combine(real, "not", "yet"), s.EyePath);
+    }
+
+    [Fact]
+    public void Chained_links_resolve_to_the_final_target()
+    {
+        var real = Directory.CreateDirectory(_tmp.Path("real")).FullName;
+        var first = LinkTo(real, "first");
+        var second = LinkTo(first, "second");
+
+        var s = HeliographSettings.Load(Env(("HELIOGRAPH_DOSSIER_DIR", Path.Combine(second, "d"))), envFile: null);
+
+        Assert.Equal(Path.Combine(real, "d"), s.DossierPath);
     }
 
     [Fact]
