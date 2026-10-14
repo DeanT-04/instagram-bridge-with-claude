@@ -16,5 +16,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\Heliograph.Core\Heliograph.Core.csproj" />
+    <ProjectReference Include="..\Heliograph.Core.Probe\Heliograph.Core.Probe.csproj" />
   </ItemGroup>
 </Project>
