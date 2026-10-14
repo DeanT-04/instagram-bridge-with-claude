@@ -246,6 +246,37 @@ public sealed class ConfigTests : IDisposable
         Assert.Contains(error.Errors, e => e.StartsWith(field, StringComparison.Ordinal));
     }
 
+    [Theory]
+    [InlineData("HELIOGRAPH_BROWSER_IDLE_MINUTES", "inf", "browser_idle_minutes")]
+    [InlineData("HELIOGRAPH_BROWSER_IDLE_MINUTES", "Infinity", "browser_idle_minutes")]
+    [InlineData("HELIOGRAPH_BROWSER_IDLE_MINUTES", "NaN", "browser_idle_minutes")]
+    [InlineData("HELIOGRAPH_BROWSER_IDLE_MINUTES", "1e30", "browser_idle_minutes")]
+    [InlineData("HELIOGRAPH_BROWSER_IDLE_MINUTES", "1e400", "browser_idle_minutes")]
+    [InlineData("HELIOGRAPH_READ_MIN_INTERVAL", "1e30", "read_min_interval")]
+    [InlineData("HELIOGRAPH_READ_JITTER", "1e30", "read_jitter")]
+    [InlineData("HELIOGRAPH_WRITE_MIN_INTERVAL", "1e30", "write_min_interval")]
+    [InlineData("HELIOGRAPH_WRITE_JITTER", "1e30", "write_jitter")]
+    [InlineData("HELIOGRAPH_ARTIFACT_RETENTION_DAYS", "1e30", "artifact_retention_days")]
+    [InlineData("HELIOGRAPH_ARTIFACT_RETENTION_DAYS", "20000000", "artifact_retention_days")]
+    public void Non_finite_or_oversized_durations_are_rejected_not_thrown_raw(string name, string value, string field)
+    {
+        var error = Assert.Throws<SettingsValidationException>(
+            () => HeliographSettings.Load(Env((name, value)), envFile: null));
+
+        Assert.Contains(error.Errors, e => e.StartsWith(field, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public void Largest_representable_durations_are_accepted()
+    {
+        var s = HeliographSettings.Load(
+            Env(("HELIOGRAPH_ARTIFACT_RETENTION_DAYS", "10000000"), ("HELIOGRAPH_WRITE_JITTER", "1e9")),
+            envFile: null);
+
+        Assert.Equal(TimeSpan.FromDays(10_000_000), s.ArtifactRetention);
+        Assert.Equal(TimeSpan.FromSeconds(1e9), s.WriteJitter);
+    }
+
     [Fact]
     public void Every_invalid_value_is_reported_at_once()
     {
