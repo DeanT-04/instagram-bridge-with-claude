@@ -122,18 +122,18 @@ public sealed record HeliographSettings
             EyePath = field.Path("eye_dir") ?? Path.Combine(home, "eye"),
             CdpPort = (int)field.Integer("cdp_port", 0, min: 0, max: 65535),
             BrowserChannel = field.Choice("browser_channel", BrowserChannel.Auto),
-            BrowserIdle = TimeSpan.FromMinutes(field.Number("browser_idle_minutes", 15)),
+            BrowserIdle = field.Duration("browser_idle_minutes", 15, TimeSpan.FromMinutes),
             WhisperModel = field.Text("whisper_model", "small"),
             WhisperModelNonEnglish = field.Text("whisper_model_non_english", "medium"),
             WhisperTranslate = field.Flag("whisper_translate", true),
             OcrEngine = field.Choice("ocr_engine", OcrEngine.Auto),
-            ReadMinInterval = TimeSpan.FromSeconds(field.Number("read_min_interval", 1.5)),
-            ReadJitter = TimeSpan.FromSeconds(field.Number("read_jitter", 1.0)),
-            WriteMinInterval = TimeSpan.FromSeconds(field.Number("write_min_interval", 20.0)),
-            WriteJitter = TimeSpan.FromSeconds(field.Number("write_jitter", 10.0)),
+            ReadMinInterval = field.Duration("read_min_interval", 1.5, TimeSpan.FromSeconds),
+            ReadJitter = field.Duration("read_jitter", 1.0, TimeSpan.FromSeconds),
+            WriteMinInterval = field.Duration("write_min_interval", 20.0, TimeSpan.FromSeconds),
+            WriteJitter = field.Duration("write_jitter", 10.0, TimeSpan.FromSeconds),
             EyeMaxBytes = field.Integer("eye_max_bytes", 10 * 1024 * 1024, min: 1),
             EyeBackups = (int)field.Integer("eye_backups", 5, min: 0, max: int.MaxValue),
-            ArtifactRetention = TimeSpan.FromDays(field.Number("artifact_retention_days", 7)),
+            ArtifactRetention = field.Duration("artifact_retention_days", 7, TimeSpan.FromDays),
             LogLevel = field.Choice("log_level", LogLevel.Info, upperCase: true),
         };
         return field.Errors.Count == 0 ? settings : throw new SettingsValidationException(field.Errors);
@@ -187,17 +187,28 @@ public sealed record HeliographSettings
             return value;
         }
 
-        public double Number(string name, double fallback)
+        public TimeSpan Duration(string name, double fallback, Func<double, TimeSpan> unit)
         {
             if (!values.TryGetValue(name, out var raw))
             {
-                return fallback;
+                return unit(fallback);
             }
             if (!double.TryParse(raw, NumberStyles.Float, CultureInfo.InvariantCulture, out var value))
             {
-                return Fail(name, raw, "should be a valid number", fallback);
+                return Fail(name, raw, "should be a valid number", unit(fallback));
             }
-            return value >= 0 ? value : Fail(name, raw, "should be greater than or equal to 0", fallback);
+            if (!(value >= 0))
+            {
+                return Fail(name, raw, "should be greater than or equal to 0", unit(fallback));
+            }
+            try
+            {
+                return unit(value);
+            }
+            catch (OverflowException)
+            {
+                return Fail(name, raw, "should be a finite number of reasonable size", unit(fallback));
+            }
         }
 
         public bool Flag(string name, bool fallback)
