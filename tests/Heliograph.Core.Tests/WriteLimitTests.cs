@@ -216,6 +216,43 @@ public sealed class WriteLimitTests : IDisposable
     }
 
     [Fact]
+    public void Release_never_removes_a_lock_taken_over_after_the_ownership_check()
+    {
+        var lockPath = _tmp.Path("x.lock");
+        var fileLock = new FileLock(lockPath, TimeSpan.FromSeconds(1))
+        {
+            OnOwnershipVerified = () =>
+            {
+                File.Delete(lockPath);
+                File.WriteAllText(lockPath, "99:taken-over");
+            },
+        };
+
+        fileLock.Hold().Dispose();
+
+        Assert.Equal("99:taken-over", File.ReadAllText(lockPath));
+    }
+
+    [Fact]
+    public void Release_leaves_no_temporary_files_whoever_owns_the_lock()
+    {
+        var lockPath = _tmp.Path("x.lock");
+
+        using (new FileLock(lockPath, TimeSpan.FromSeconds(1)).Hold())
+        {
+        }
+
+        Assert.Empty(Directory.GetFileSystemEntries(_tmp.Root));
+
+        using (new FileLock(lockPath, TimeSpan.FromSeconds(1)).Hold())
+        {
+            File.WriteAllText(lockPath, "someone-else");
+        }
+
+        Assert.Equal([lockPath], Directory.GetFileSystemEntries(_tmp.Root));
+    }
+
+    [Fact]
     public void Breaking_a_lock_that_was_just_replaced_puts_it_back()
     {
         var lockPath = _tmp.Path("x.lock");
