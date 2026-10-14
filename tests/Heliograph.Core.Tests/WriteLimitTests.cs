@@ -136,6 +136,17 @@ public sealed class WriteLimitTests : IDisposable
     }
 
     [Fact]
+    public void A_failed_state_write_leaves_no_temporary_file()
+    {
+        var path = _tmp.Path("r.json");
+        Directory.CreateDirectory(path);
+
+        Assert.ThrowsAny<Exception>(() => Limiter(path, 1, 0).TryAcquire());
+
+        Assert.Empty(Directory.GetFiles(_tmp.Root, "*.tmp"));
+    }
+
+    [Fact]
     public void Numeric_strings_in_the_state_are_honoured()
     {
         var path = _tmp.Path("r.json");
