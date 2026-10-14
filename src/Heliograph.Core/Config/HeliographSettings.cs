@@ -167,7 +167,7 @@ public sealed record HeliographSettings
             {
                 raw = UserHome + raw[1..];
             }
-            return System.IO.Path.GetFullPath(raw.Length == 0 ? "." : raw);
+            return RealPath.Resolve(raw.Length == 0 ? "." : raw);
         }
 
         public long Integer(string name, long fallback, long min, long max = long.MaxValue)

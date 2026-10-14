@@ -1,11 +1,13 @@
+using Heliograph.Core.Config;
+
 namespace Heliograph.Core.Tests;
 
 public sealed class TempDir : IDisposable
 {
     public TempDir() => Directory.CreateDirectory(Root);
 
-    public string Root { get; } =
-        System.IO.Path.Combine(System.IO.Path.GetTempPath(), "heliograph-tests", Guid.NewGuid().ToString("N"));
+    public string Root { get; } = System.IO.Path.Combine(
+        RealPath.Resolve(System.IO.Path.GetTempPath()), "heliograph-tests", Guid.NewGuid().ToString("N"));
 
     public string Path(params string[] parts) => System.IO.Path.Combine([Root, .. parts]);
 
