@@ -108,7 +108,7 @@ public sealed record HeliographSettings
         var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
         if (envFile is not null && File.Exists(envFile))
         {
-            AddSettings(values, DotEnv.Read(envFile));
+            AddSettings(values, DotEnv.Read(envFile, environment));
         }
         AddSettings(values, environment);
 
