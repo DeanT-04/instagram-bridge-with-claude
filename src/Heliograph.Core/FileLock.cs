@@ -19,6 +19,9 @@ public sealed class FileLock(
 
     public string Path { get; } = path;
 
+    /// <summary>Test seam. Runs on release once the lock is known to be ours, before it is removed.</summary>
+    internal Action? OnOwnershipVerified { get; init; }
+
     public IDisposable Hold()
     {
         var token = $"{Environment.ProcessId}:{Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(8))}";
@@ -149,6 +152,7 @@ public sealed class FileLock(
         {
             if (owner.Read() == token)
             {
+                owner.OnOwnershipVerified?.Invoke();
                 Unlink(owner.Path);
             }
         }
