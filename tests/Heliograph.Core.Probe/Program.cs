@@ -9,6 +9,7 @@ try
     {
         ["acquire", var path, var interval, var jitter] => Acquire(path, Seconds(interval), Seconds(jitter)),
         ["settings"] => DumpSettings(HeliographSettings.Current),
+        ["settings", var envFile] => DumpSettings(HeliographSettings.Load(ProcessEnvironment(), envFile)),
         ["try", var op] => Try(op),
         ["check"] => Check(),
         ["errors"] => DumpErrors(),
@@ -53,12 +54,18 @@ static int Check()
 
 static int DumpErrors()
 {
+    const string Raised = "hint passed at the raise site";
     HeliographException[] errors =
     [
         new HeliographException(), new NotLoggedInException(), new AppNotInstalledException(),
         new BrowserNotFoundException(), new DriverUnavailableException(), new RateLimitedException(),
         new UnsafeActionException(), new DownloadBlockedException(), new ElementNotFoundException(),
         new InstagramApiException("unexpected status", status: 500, path: "/api/v1/x/"),
+        new HeliographException(hint: Raised), new NotLoggedInException(hint: Raised),
+        new AppNotInstalledException(hint: Raised), new BrowserNotFoundException(hint: Raised),
+        new DriverUnavailableException(hint: Raised), new RateLimitedException(hint: Raised),
+        new UnsafeActionException(hint: Raised), new DownloadBlockedException(hint: Raised),
+        new ElementNotFoundException(hint: Raised), new InstagramApiException("unexpected status", hint: Raised),
     ];
     foreach (var error in errors)
     {
@@ -103,11 +110,15 @@ static int DumpSettings(HeliographSettings s)
     return 0;
 }
 
+static Dictionary<string, string> ProcessEnvironment() =>
+    Environment.GetEnvironmentVariables().Cast<System.Collections.DictionaryEntry>()
+        .ToDictionary(e => (string)e.Key, e => (string?)e.Value ?? "");
+
 static TimeSpan Seconds(string value) => TimeSpan.FromSeconds(double.Parse(value, CultureInfo.InvariantCulture));
 
 static int Usage()
 {
-    Console.Error.WriteLine("usage: Heliograph.Core.Probe settings | check | try <op> | errors");
+    Console.Error.WriteLine("usage: Heliograph.Core.Probe settings [env-file] | check | try <op> | errors");
     Console.Error.WriteLine("       Heliograph.Core.Probe acquire <state-file> <min-interval-s> <jitter-s>");
     return 2;
 }
