@@ -137,6 +137,84 @@ public sealed class ConfigTests : IDisposable
         Assert.Equal(9222, s.CdpPort);
     }
 
+    private string WhisperModelFrom(string envFileText, params (string Key, string Value)[] vars)
+    {
+        var envFile = _tmp.Path("user.env");
+        File.WriteAllText(envFile, envFileText);
+        return HeliographSettings.Load(Env(vars), envFile).WhisperModel;
+    }
+
+    [Fact]
+    public void Env_file_interpolates_earlier_file_keys()
+    {
+        var model = WhisperModelFrom(
+            "BASE=tiny\nHELIOGRAPH_WHISPER_MODEL=${BASE}.en\n");
+
+        Assert.Equal("tiny.en", model);
+    }
+
+    [Fact]
+    public void Env_file_interpolates_process_env_when_the_file_lacks_the_key()
+    {
+        var model = WhisperModelFrom(
+            "HELIOGRAPH_WHISPER_MODEL=${MODEL_FAMILY}-v3\n", ("MODEL_FAMILY", "large"));
+
+        Assert.Equal("large-v3", model);
+    }
+
+    [Fact]
+    public void Env_file_key_beats_process_env_during_interpolation()
+    {
+        var model = WhisperModelFrom(
+            "MODEL_FAMILY=fromfile\nHELIOGRAPH_WHISPER_MODEL=${MODEL_FAMILY}\n", ("MODEL_FAMILY", "fromenv"));
+
+        Assert.Equal("fromfile", model);
+    }
+
+    [Theory]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=a${NOPE}b\n", "ab")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=a${NOPE:-dflt}b\n", "adfltb")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=${LATER}x\nLATER=late\n", "x")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=${HELIOGRAPH_WHISPER_MODEL}x\n", "x")]
+    public void Env_file_unknown_variables_expand_to_empty(string text, string expected)
+    {
+        Assert.Equal(expected, WhisperModelFrom(text));
+    }
+
+    [Theory]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=\"${BASE} quoted\"", "one quoted")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL='${BASE} single'", "one single")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=$BASE", "$BASE")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=${BASE", "${BASE")]
+    public void Env_file_interpolation_follows_python_dotenv_quoting(string line, string expected)
+    {
+        Assert.Equal(expected, WhisperModelFrom($"BASE=one\n{line}\n"));
+    }
+
+    [Theory]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=\"line1\nline2\"\n", "line1\nline2")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL='multi\n single'\n", "multi\n single")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=\"a\nb\"  # trailing\n", "a\nb")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=\"say \\\"hi\\\"\\n\"\n", "say \"hi\"\n")]
+    public void Env_file_quoted_values_may_span_lines(string text, string expected)
+    {
+        Assert.Equal(expected, WhisperModelFrom(text));
+    }
+
+    [Theory]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=\"abc\nHELIOGRAPH_CDP_PORT=9111\n")]
+    [InlineData("HELIOGRAPH_WHISPER_MODEL=\"abc\" junk\nHELIOGRAPH_CDP_PORT=9111\n")]
+    public void Env_file_malformed_quoted_line_is_skipped(string text)
+    {
+        var envFile = _tmp.Path("user.env");
+        File.WriteAllText(envFile, text);
+
+        var s = HeliographSettings.Load(Env(), envFile);
+
+        Assert.Equal("small", s.WhisperModel);
+        Assert.Equal(9111, s.CdpPort);
+    }
+
     [Fact]
     public void Missing_env_file_is_fine()
     {
