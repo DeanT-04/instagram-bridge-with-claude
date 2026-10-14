@@ -128,8 +128,35 @@ public sealed class WriteLimiter(
     private void Write(WriteLimitState state)
     {
         var tmp = $"{Path}.{Environment.ProcessId}.tmp";
-        File.WriteAllBytes(tmp, JsonSerializer.SerializeToUtf8Bytes(state, WriteLimitJson.Default.WriteLimitState));
-        File.Move(tmp, Path, overwrite: true);
+        var published = false;
+        try
+        {
+            using (var stream = new FileStream(tmp, FileMode.Create, FileAccess.Write))
+            {
+                stream.Write(JsonSerializer.SerializeToUtf8Bytes(state, WriteLimitJson.Default.WriteLimitState));
+                stream.Flush(flushToDisk: true);
+            }
+            File.Move(tmp, Path, overwrite: true);
+            published = true;
+        }
+        finally
+        {
+            if (!published)
+            {
+                DeleteQuietly(tmp);
+            }
+        }
+    }
+
+    private static void DeleteQuietly(string path)
+    {
+        try
+        {
+            File.Delete(path);
+        }
+        catch (Exception e) when (e is IOException or UnauthorizedAccessException)
+        {
+        }
     }
 }
 
