@@ -60,7 +60,10 @@ internal sealed class FakeRunner : IProcessRunner
 
     public ProcessResult Run(string fileName, IReadOnlyList<string> arguments, TimeSpan timeout)
     {
-        Calls.Add((fileName, arguments));
+        lock (Calls)
+        {
+            Calls.Add((fileName, arguments));
+        }
         return Handler(fileName, arguments);
     }
 }

@@ -1,3 +1,4 @@
+using Heliograph.Core.Eye;
 namespace Heliograph.Core.Detect;
 
 /// <summary>Finds a faster-whisper model in the Hugging Face hub cache, or at an absolute directory.</summary>
@@ -5,7 +6,10 @@ public sealed class WhisperModelDetector(DetectionSeams seams)
 {
     private const string ModelFile = "model.bin";
 
-    public WhisperModelInfo Detect(string model)
+    public WhisperModelInfo Detect(string model) =>
+        Spans.Run(_ => DetectCore(model), "detect.whisper_model", [("model", model)]);
+
+    private WhisperModelInfo DetectCore(string model)
     {
         var windows = seams.Platform == DetectionPlatform.Windows;
         if (PlatformPath.IsAbsolute(model, windows))

@@ -1,3 +1,4 @@
+using Heliograph.Core.Eye;
 namespace Heliograph.Core.Detect;
 
 /// <summary>Finds Edge, then Chrome, then Chromium. One entry per channel; never throws.</summary>
@@ -31,7 +32,9 @@ public sealed class BrowserDetector(DetectionSeams seams)
         ["chromium"] = ["chromium", "chromium-browser"],
     };
 
-    public IReadOnlyList<BrowserInfo> FindBrowsers()
+    public IReadOnlyList<BrowserInfo> FindBrowsers() => Spans.Run(_ => FindBrowsersCore(), "detect.browsers");
+
+    private IReadOnlyList<BrowserInfo> FindBrowsersCore()
     {
         var found = new List<BrowserInfo>();
         foreach (var channel in Channels)
@@ -57,8 +60,9 @@ public sealed class BrowserDetector(DetectionSeams seams)
                 }
             }
         }
-        catch (Exception)
+        catch (Exception error)
         {
+            Spans.Current?.Set($"{channel}_error", error.Message);
             return null;
         }
         return null;

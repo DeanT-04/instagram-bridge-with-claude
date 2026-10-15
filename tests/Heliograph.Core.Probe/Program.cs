@@ -12,6 +12,7 @@ try
         ["settings", var envFile] => DumpSettings(HeliographSettings.Load(ProcessEnvironment(), envFile)),
         ["try", var op] => Try(op),
         ["check"] => Check(),
+        ["detect"] => DetectCommands.Run(),
         ["errors"] => DumpErrors(),
         ["eye", .. var rest] => EyeCommands.Run(rest),
         _ => Usage(),

@@ -1,9 +1,14 @@
+using Heliograph.Core.Tests.Eye;
 using Heliograph.Core.Detect;
 
 namespace Heliograph.Core.Tests.Detect;
 
-public sealed class BrowserDetectorTests
+[Collection(ProcessStateCollection.Name)]
+public sealed class BrowserDetectorTests : IDisposable
 {
+    private readonly EyeHome _eye = new();
+
+    public void Dispose() => _eye.Dispose();
     private const string EdgeRegistry = @"C:\Edge\msedge.exe";
     private const string ChromeWin = @"C:\PF\Google\Chrome\Application\chrome.exe";
 

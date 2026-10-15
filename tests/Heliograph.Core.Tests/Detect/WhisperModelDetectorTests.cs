@@ -1,9 +1,14 @@
+using Heliograph.Core.Tests.Eye;
 using Heliograph.Core.Detect;
 
 namespace Heliograph.Core.Tests.Detect;
 
-public sealed class WhisperModelDetectorTests
+[Collection(ProcessStateCollection.Name)]
+public sealed class WhisperModelDetectorTests : IDisposable
 {
+    private readonly EyeHome _eye = new();
+
+    public void Dispose() => _eye.Dispose();
     private const string SmallModel =
         @"C:\Users\me\.cache\huggingface\hub\models--Systran--faster-whisper-small\snapshots\abc\model.bin";
 

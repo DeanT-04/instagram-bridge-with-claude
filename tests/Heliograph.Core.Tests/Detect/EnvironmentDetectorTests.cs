@@ -1,10 +1,15 @@
+using Heliograph.Core.Tests.Eye;
 using Heliograph.Core.Config;
 using Heliograph.Core.Detect;
 
 namespace Heliograph.Core.Tests.Detect;
 
-public sealed class EnvironmentDetectorTests
+[Collection(ProcessStateCollection.Name)]
+public sealed class EnvironmentDetectorTests : IDisposable
 {
+    private readonly EyeHome _eye = new();
+
+    public void Dispose() => _eye.Dispose();
     private const string PackageJson =
         "{\"Name\":\"Facebook.InstagramBeta\",\"Version\":\"42.0.23.0\",\"PackageFamilyName\":\"Facebook.InstagramBeta_8xx8rvfyw5nnt\"}";
     private const string ChromeWin = @"C:\PF\Google\Chrome\Application\chrome.exe";

@@ -1,3 +1,4 @@
+using Heliograph.Core.Eye;
 using System.ComponentModel;
 using System.Text.Json;
 
@@ -24,7 +25,10 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
 
     private sealed record QueryResult(Package? Package, string? Error);
 
-    public InstagramAppInfo Detect(bool checkWindow = true)
+    public InstagramAppInfo Detect(bool checkWindow = true) =>
+        Spans.Run(_ => DetectCore(checkWindow), "detect.instagram_app", [("check_window", checkWindow)]);
+
+    private InstagramAppInfo DetectCore(bool checkWindow)
     {
         if (seams.Platform != DetectionPlatform.Windows)
         {
@@ -59,7 +63,10 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
     }
 
     /// <summary>Windows owned by the app's AUMID. The seam returns only those, never a title match.</summary>
-    public WindowCheck FindWindow(string aumid)
+    public WindowCheck FindWindow(string aumid) =>
+        Spans.Run(_ => FindWindowCore(aumid), "detect.instagram_window");
+
+    private WindowCheck FindWindowCore(string aumid)
     {
         IReadOnlyList<string> titles;
         try
@@ -68,6 +75,7 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
         }
         catch (Exception error)
         {
+            Spans.Current?.Set("window_error", error.Message);
             return new WindowCheck(null, null, $"window check unavailable: {error.Message}");
         }
 
@@ -108,6 +116,7 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
             var result = RunQuery();
             if (result.Error is not null)
             {
+                Spans.Current?.Set("query_error", result.Error);
                 return result;
             }
             if (result.Package is null)

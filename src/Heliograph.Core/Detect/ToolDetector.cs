@@ -1,3 +1,4 @@
+using Heliograph.Core.Eye;
 using System.Text.RegularExpressions;
 
 namespace Heliograph.Core.Detect;
@@ -7,7 +8,10 @@ public sealed partial class ToolDetector(DetectionSeams seams)
 {
     private static readonly TimeSpan VersionTimeout = TimeSpan.FromSeconds(10);
 
-    public ToolInfo Detect(string name, string? hint = null)
+    public ToolInfo Detect(string name, string? hint = null) =>
+        Spans.Run(_ => DetectCore(name, hint), "detect.tool", [("tool", name)]);
+
+    private ToolInfo DetectCore(string name, string? hint)
     {
         var path = FindOnPath(name);
         if (path is null)
