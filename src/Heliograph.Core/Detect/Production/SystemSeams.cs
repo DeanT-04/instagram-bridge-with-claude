@@ -11,13 +11,18 @@ public static class SystemSeams
         Env: new ProcessEnvironment(),
         Runner: new ProcessRunner(),
         Shell: new ShellLauncher(),
-        Window: new AppWindowProbe(),
+        Window: OperatingSystem.IsWindows() ? new AppWindowProbe() : new NoWindowProbe(),
         Clock: () => Environment.TickCount64 / 1000.0);
 
     private static DetectionPlatform CurrentPlatform() =>
         OperatingSystem.IsWindows() ? DetectionPlatform.Windows
         : OperatingSystem.IsMacOS() ? DetectionPlatform.MacOS
         : DetectionPlatform.Linux;
+
+    private sealed class NoWindowProbe : IAppWindowProbe
+    {
+        public IReadOnlyList<string> FindWindowTitles(string aumid) => [];
+    }
 
     private sealed class ProcessEnvironment : IEnvironmentSource
     {

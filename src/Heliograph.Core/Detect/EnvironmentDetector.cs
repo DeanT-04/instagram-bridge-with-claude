@@ -18,8 +18,8 @@ public sealed class EnvironmentDetector(HeliographSettings settings, DetectionSe
 
     private async Task<EnvironmentReport> DetectCoreAsync(bool checkWindow)
     {
-        var initialized = await Guard("browser_profile", () => seams.Files.DirectoryHasEntries(settings.ProfilePath), _ => false);
-        var loggedIn = await Guard<bool?>("login_state",
+        var initialized = Guard("browser_profile", () => seams.Files.DirectoryHasEntries(settings.ProfilePath), _ => false);
+        var loggedIn = Guard<bool?>("login_state",
             () => LoginStateReader.Read(seams.Files.ReadText(settings.StateFile)), _ => null);
 
         var browsers = Guard<IReadOnlyList<BrowserInfo>>("browsers", _browsers.FindBrowsers, _ => []);
@@ -29,31 +29,49 @@ public sealed class EnvironmentDetector(HeliographSettings settings, DetectionSe
             e => new WhisperModelInfo(false, null, e.Message));
         var app = Guard("instagram_app", () => _app.Detect(checkWindow),
             e => new InstagramAppInfo(true, false, null, null, null, null, e.Message));
-        await Task.WhenAll(browsers, ffmpeg, ffprobe, whisper, app);
+        await Task.WhenAll(initialized, loggedIn, browsers, ffmpeg, ffprobe, whisper, app);
+
+        // Span writes happen here, on the flow that owns the environment span, never on the probe threads.
+        var outcomes = new (string Name, Exception? Error)[]
+        {
+            (initialized.Result.Name, initialized.Result.Error),
+            (loggedIn.Result.Name, loggedIn.Result.Error),
+            (browsers.Result.Name, browsers.Result.Error),
+            (ffmpeg.Result.Name, ffmpeg.Result.Error),
+            (ffprobe.Result.Name, ffprobe.Result.Error),
+            (whisper.Result.Name, whisper.Result.Error),
+            (app.Result.Name, app.Result.Error),
+        };
+        foreach (var (name, error) in outcomes)
+        {
+            if (error is not null)
+            {
+                Spans.Current?.Set(name, error.Message).Fail(error);
+            }
+        }
 
         return new EnvironmentReport(
             Os: OsName(seams.Platform),
-            Browsers: browsers.Result,
-            Ffmpeg: ffmpeg.Result,
-            Ffprobe: ffprobe.Result,
-            WhisperModel: whisper.Result,
-            InstagramApp: app.Result,
-            BrowserProfileInitialized: initialized,
-            LoggedIn: loggedIn);
+            Browsers: browsers.Result.Value,
+            Ffmpeg: ffmpeg.Result.Value,
+            Ffprobe: ffprobe.Result.Value,
+            WhisperModel: whisper.Result.Value,
+            InstagramApp: app.Result.Value,
+            BrowserProfileInitialized: initialized.Result.Value,
+            LoggedIn: loggedIn.Result.Value);
     }
 
-    /// <summary>Runs one probe on the pool. A throw becomes the fallback and is noted on the environment span.</summary>
-    private static Task<T> Guard<T>(string name, Func<T> probe, Func<Exception, T> fallback) =>
+    /// <summary>Runs one probe on the pool. A throw becomes the fallback and is returned for the caller to record.</summary>
+    private static Task<Probed<T>> Guard<T>(string name, Func<T> probe, Func<Exception, T> fallback) =>
         Task.Run(() =>
         {
             try
             {
-                return probe();
+                return new Probed<T>(probe(), null, name);
             }
             catch (Exception error)
             {
-                Spans.Current?.Set($"{name}_error", error.Message);
-                return fallback(error);
+                return new Probed<T>(fallback(error), error, $"{name}_error");
             }
         });
 
@@ -65,4 +83,6 @@ public sealed class EnvironmentDetector(HeliographSettings settings, DetectionSe
         DetectionPlatform.MacOS => "macos",
         _ => "linux",
     };
+
+    private sealed record Probed<T>(T Value, Exception? Error, string Name);
 }

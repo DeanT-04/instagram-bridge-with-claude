@@ -1,41 +1,38 @@
-using Heliograph.Core.Detect;
 using System.Runtime.InteropServices;
+using System.Runtime.Versioning;
+using Heliograph.Core.Detect;
 
 namespace Heliograph.Core.Detect.Production;
 
 /// <summary>
-/// Titles of visible top-level windows whose process runs in the package family named by the AUMID.
-/// Matching is by package family, the same identity the AUMID carries, so a browser tab titled "Instagram" never matches.
+/// Titles of visible top-level windows whose AppUserModelID equals the requested AUMID. The Store Instagram app is a
+/// hosted Edge PWA, so its windows belong to the shared msedge process; only the per-window AUMID identifies them.
 /// </summary>
+[SupportedOSPlatform("windows")]
 public sealed unsafe class AppWindowProbe : IAppWindowProbe
 {
-    private const uint ProcessQueryLimitedInformation = 0x1000;
-    private const int MaxFamilyLength = 256;
+    private const string ChromeWindowClass = "Chrome_WidgetWin_1";
     private const int MaxTitleLength = 512;
+    private const int MaxClassLength = 256;
 
     [ThreadStatic]
     private static Collector? _collector;
 
-    private sealed class Collector(string family)
+    private sealed class Collector(string aumid)
     {
-        public string Family { get; } = family;
+        public string Aumid { get; } = aumid;
 
         public List<string> Titles { get; } = [];
     }
 
     public IReadOnlyList<string> FindWindowTitles(string aumid)
     {
-        if (!OperatingSystem.IsWindows())
-        {
-            return [];
-        }
-        var bang = aumid.IndexOf('!');
-        if (bang <= 0)
+        if (!OperatingSystem.IsWindows() || string.IsNullOrEmpty(aumid))
         {
             return [];
         }
 
-        var collector = new Collector(aumid[..bang]);
+        var collector = new Collector(aumid);
         _collector = collector;
         try
         {
@@ -49,23 +46,16 @@ public sealed unsafe class AppWindowProbe : IAppWindowProbe
     }
 
     [UnmanagedCallersOnly]
-    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static int Visit(nint hwnd, nint _)
     {
-        var collector = _collector;
-        if (collector is null || NativeMethods.IsWindowVisible(hwnd) == 0)
-        {
-            return 1;
-        }
-        NativeMethods.GetWindowThreadProcessId(hwnd, out var pid);
-        var process = NativeMethods.OpenProcess(ProcessQueryLimitedInformation, false, pid);
-        if (process == 0)
-        {
-            return 1;
-        }
         try
         {
-            if (FamilyOf(process) != collector.Family)
+            var collector = _collector;
+            if (collector is null || NativeMethods.IsWindowVisible(hwnd) == 0 || ClassOf(hwnd) != ChromeWindowClass)
+            {
+                return 1;
+            }
+            if (AumidOf(hwnd) != collector.Aumid)
             {
                 return 1;
             }
@@ -74,24 +64,57 @@ public sealed unsafe class AppWindowProbe : IAppWindowProbe
             {
                 collector.Titles.Add(title);
             }
+            return 1;
+        }
+        catch (Exception)
+        {
+            return 1;
+        }
+    }
+
+    /// <summary>Reads PKEY_AppUserModel_ID from the window's property store. Null when the window has none.</summary>
+    private static string? AumidOf(nint hwnd)
+    {
+        var iid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+        var key = new PropertyKey(new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3"), 5);
+        nint store = 0;
+        if (NativeMethods.SHGetPropertyStoreForWindow(hwnd, &iid, &store) < 0 || store == 0)
+        {
+            return null;
+        }
+
+        try
+        {
+            var vtable = *(nint**)store;
+            var getValue = (delegate* unmanaged[Stdcall]<nint, PropertyKey*, PropVariant*, int>)vtable[5];
+            PropVariant value = default;
+            if (getValue(store, &key, &value) < 0)
+            {
+                return null;
+            }
+            try
+            {
+                return value.Vt == NativeMethods.VtLpwstr && value.Ptr != 0 ? Marshal.PtrToStringUni(value.Ptr) : null;
+            }
+            finally
+            {
+                NativeMethods.PropVariantClear(&value);
+            }
         }
         finally
         {
-            NativeMethods.CloseHandle(process);
+            var release = (delegate* unmanaged[Stdcall]<nint, uint>)(*(nint**)store)[2];
+            release(store);
         }
-        return 1;
     }
 
-    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
-    private static string? FamilyOf(nint process)
+    private static string ClassOf(nint hwnd)
     {
-        uint length = MaxFamilyLength;
-        var buffer = stackalloc char[MaxFamilyLength];
-        var status = NativeMethods.GetPackageFamilyName(process, ref length, buffer);
-        return status == 0 && length > 0 ? new string(buffer, 0, (int)length - 1) : null;
+        var buffer = stackalloc char[MaxClassLength];
+        var copied = NativeMethods.GetClassNameW(hwnd, buffer, MaxClassLength);
+        return copied > 0 ? new string(buffer, 0, copied) : string.Empty;
     }
 
-    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     private static string TitleOf(nint hwnd)
     {
         var buffer = stackalloc char[MaxTitleLength];
@@ -100,28 +123,45 @@ public sealed unsafe class AppWindowProbe : IAppWindowProbe
     }
 }
 
-[System.Runtime.Versioning.SupportedOSPlatform("windows")]
+[StructLayout(LayoutKind.Sequential)]
+internal readonly struct PropertyKey(Guid format, uint id)
+{
+    public readonly Guid Format = format;
+    public readonly uint Id = id;
+}
+
+/// <summary>PROPVARIANT. Only the tag and the pointer payload are read; the tail pads the union for the callee.</summary>
+[StructLayout(LayoutKind.Sequential)]
+internal struct PropVariant
+{
+    public ushort Vt;
+    public ushort Reserved1;
+    public ushort Reserved2;
+    public ushort Reserved3;
+    public nint Ptr;
+    public nint Tail;
+}
+
+[SupportedOSPlatform("windows")]
 internal static unsafe partial class NativeMethods
 {
+    internal const ushort VtLpwstr = 31;
+
     [LibraryImport("user32.dll")]
     internal static partial int EnumWindows(delegate* unmanaged<nint, nint, int> callback, nint lParam);
 
     [LibraryImport("user32.dll")]
     internal static partial int IsWindowVisible(nint hwnd);
 
-    [LibraryImport("user32.dll")]
-    internal static partial uint GetWindowThreadProcessId(nint hwnd, out uint processId);
+    [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
+    internal static partial int GetClassNameW(nint hwnd, char* className, int maxCount);
 
     [LibraryImport("user32.dll", StringMarshalling = StringMarshalling.Utf16)]
     internal static partial int GetWindowTextW(nint hwnd, char* text, int maxCount);
 
-    [LibraryImport("kernel32.dll", SetLastError = true)]
-    internal static partial nint OpenProcess(uint access, [MarshalAs(UnmanagedType.Bool)] bool inherit, uint processId);
+    [LibraryImport("shell32.dll")]
+    internal static partial int SHGetPropertyStoreForWindow(nint hwnd, Guid* riid, nint* store);
 
-    [LibraryImport("kernel32.dll")]
-    [return: MarshalAs(UnmanagedType.Bool)]
-    internal static partial bool CloseHandle(nint handle);
-
-    [LibraryImport("kernel32.dll", SetLastError = true, StringMarshalling = StringMarshalling.Utf16)]
-    internal static partial int GetPackageFamilyName(nint process, ref uint length, char* familyName);
+    [LibraryImport("ole32.dll")]
+    internal static partial int PropVariantClear(PropVariant* value);
 }

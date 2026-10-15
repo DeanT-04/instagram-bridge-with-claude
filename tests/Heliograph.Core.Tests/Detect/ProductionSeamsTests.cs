@@ -94,15 +94,24 @@ public sealed class ProductionSeamsTests
     }
 
     [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void Window_probe_returns_no_titles_when_no_window_matches_or_off_windows()
     {
         Assert.Empty(new AppWindowProbe().FindWindowTitles("Facebook.Heliograph-no-such-app_8xx!App"));
     }
 
     [Fact]
+    [System.Runtime.Versioning.SupportedOSPlatform("windows")]
     public void Window_probe_rejects_an_aumid_without_a_package_family()
     {
         Assert.Empty(new AppWindowProbe().FindWindowTitles("no-bang-here"));
         Assert.Empty(new AppWindowProbe().FindWindowTitles(Aumid[(Aumid.IndexOf('!') + 1)..]));
+    }
+
+    [Fact]
+    public void Bounded_read_drains_past_the_cap_and_keeps_the_first_chunk()
+    {
+        var text = ProcessRunner.ReadBounded(new StringReader(new string('x', ProcessRunner.MaxOutputChars * 3)));
+        Assert.Equal(ProcessRunner.MaxOutputChars, text.Length);
     }
 }

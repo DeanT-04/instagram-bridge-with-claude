@@ -20,11 +20,20 @@ public sealed class WhisperModelDetector(DetectionSeams seams)
                 : new WhisperModelInfo(false, null, $"no {ModelFile} in {model}");
         }
 
+        if (!IsSafeName(model))
+        {
+            return new WhisperModelInfo(false, null, "invalid model name");
+        }
+
         var found = FindInCache(model, windows);
         return found is null
             ? new WhisperModelInfo(false, null, $"whisper model '{model}' is not downloaded. Run setup --with-whisper to download it.")
             : new WhisperModelInfo(true, found, null);
     }
+
+    private static bool IsSafeName(string model) =>
+        model.Length > 0 && !model.Contains("..", StringComparison.Ordinal)
+        && model.All(c => char.IsAsciiLetterOrDigit(c) || c is '.' or '-' or '_');
 
     private string? FindInCache(string model, bool windows)
     {

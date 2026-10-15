@@ -8,7 +8,7 @@ namespace Heliograph.Core.Detect.Production;
 /// <summary>Runs a program without a shell and without a window. Output is capped; the tree is killed on timeout.</summary>
 public sealed class ProcessRunner : IProcessRunner
 {
-    private const int MaxOutputChars = 64 * 1024;
+    internal const int MaxOutputChars = 64 * 1024;
 
     public ProcessResult Run(string fileName, IReadOnlyList<string> arguments, TimeSpan timeout)
     {
@@ -25,8 +25,8 @@ public sealed class ProcessRunner : IProcessRunner
         }
 
         using var process = Process.Start(info) ?? throw new IOException($"could not start {fileName}");
-        var stdout = ReadBounded(process.StandardOutput);
-        var stderr = ReadBounded(process.StandardError);
+        var stdout = Task.Run(() => ReadBounded(process.StandardOutput));
+        var stderr = Task.Run(() => ReadBounded(process.StandardError));
 
         if (!process.WaitForExit(timeout) || !Task.WaitAll([stdout, stderr], TimeSpan.FromSeconds(2)))
         {
@@ -34,21 +34,25 @@ public sealed class ProcessRunner : IProcessRunner
             throw new TimeoutException($"{fileName} timed out after {timeout.TotalSeconds:0.#}s");
         }
 
-        process.WaitForExit();
         return new ProcessResult(process.ExitCode, stdout.Result, stderr.Result);
     }
 
-    private static Task<string> ReadBounded(StreamReader reader) => Task.Run(() =>
+    /// <summary>Keeps reading to the end so a chatty child never blocks on a full pipe; only the first cap is kept.</summary>
+    internal static string ReadBounded(TextReader reader)
     {
         var text = new StringBuilder();
         var buffer = new char[4096];
         int read;
-        while (text.Length < MaxOutputChars && (read = reader.Read(buffer, 0, buffer.Length)) > 0)
+        while ((read = reader.Read(buffer, 0, buffer.Length)) > 0)
         {
-            text.Append(buffer, 0, read);
+            var room = MaxOutputChars - text.Length;
+            if (room > 0)
+            {
+                text.Append(buffer, 0, Math.Min(read, room));
+            }
         }
-        return text.Length > MaxOutputChars ? text.ToString(0, MaxOutputChars) : text.ToString();
-    });
+        return text.ToString();
+    }
 
     private static void Kill(Process process)
     {
