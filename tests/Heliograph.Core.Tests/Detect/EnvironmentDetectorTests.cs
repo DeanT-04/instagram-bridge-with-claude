@@ -112,7 +112,7 @@ public sealed class EnvironmentDetectorTests : IDisposable
         await detector.DetectAsync(checkWindow: false);
         await detector.DetectAsync(checkWindow: false);
 
-        Assert.Single(_rig.Runner.Calls.Where(c => c.File.EndsWith("powershell.exe", StringComparison.OrdinalIgnoreCase)));
+        Assert.Single(_rig.Runner.Calls, c => c.File.EndsWith("powershell.exe", StringComparison.OrdinalIgnoreCase));
     }
 
     [Theory]
