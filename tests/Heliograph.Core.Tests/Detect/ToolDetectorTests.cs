@@ -1,17 +1,13 @@
 using Heliograph.Core.Detect;
-using Heliograph.Core.Tests.Eye;
 
 namespace Heliograph.Core.Tests.Detect;
 
-[Collection(ProcessStateCollection.Name)]
-public sealed class ToolDetectorTests : IDisposable
+public sealed class ToolDetectorTests
 {
     private const string FfmpegHint = "scoop install ffmpeg";
 
-    private readonly EyeHome _eye = new();
     private readonly Rig _rig = new() { Platform = DetectionPlatform.Windows };
 
-    public void Dispose() => _eye.Dispose();
 
     private ToolInfo Detect(string name, string? hint = null) => new ToolDetector(_rig.Seams).Detect(name, hint);
 

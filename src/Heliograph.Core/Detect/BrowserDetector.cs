@@ -78,18 +78,20 @@ public sealed class BrowserDetector(DetectionSeams seams)
         {
             registered = seams.Registry.AppPathDefault(exe);
         }
-        catch (IOException)
+        catch (Exception)
         {
             registered = null;
         }
-        if (!string.IsNullOrWhiteSpace(registered))
+        var trimmed = registered?.Trim().Trim('"');
+        if (!string.IsNullOrEmpty(trimmed) && PlatformPath.IsAbsolute(trimmed, windows: true)
+            && trimmed.EndsWith(exe, StringComparison.OrdinalIgnoreCase))
         {
-            yield return (registered.Trim('"'), "registry");
+            yield return (trimmed, "registry");
         }
         foreach (var variable in new[] { "PROGRAMFILES(X86)", "PROGRAMFILES", "LOCALAPPDATA" })
         {
             var root = seams.Env.Get(variable);
-            if (string.IsNullOrEmpty(root))
+            if (string.IsNullOrEmpty(root) || !PlatformPath.IsAbsolute(root, windows: true))
             {
                 continue;
             }

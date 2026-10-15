@@ -1,27 +1,23 @@
 using Heliograph.Core.Config;
 using Heliograph.Core.Detect;
-using Heliograph.Core.Tests.Eye;
 
 namespace Heliograph.Core.Tests.Detect;
 
-[Collection(ProcessStateCollection.Name)]
-public sealed class EnvironmentDetectorTests : IDisposable
+public sealed class EnvironmentDetectorTests
 {
     private const string PackageJson =
         "{\"Name\":\"Facebook.InstagramBeta\",\"Version\":\"42.0.23.0\",\"PackageFamilyName\":\"Facebook.InstagramBeta_8xx8rvfyw5nnt\"}";
     private const string ChromeWin = @"C:\PF\Google\Chrome\Application\chrome.exe";
 
-    private readonly EyeHome _eye = new();
     private readonly Rig _rig = new() { Platform = DetectionPlatform.Windows };
     private readonly HeliographSettings _settings;
 
     public EnvironmentDetectorTests()
     {
         _settings = HeliographSettings.Load(
-            new Dictionary<string, string> { ["HELIOGRAPH_HOME"] = _eye.Path("home") }, envFile: null);
+            new Dictionary<string, string> { ["HELIOGRAPH_HOME"] = @"C:\Users\me\.heliograph" }, envFile: null);
     }
 
-    public void Dispose() => _eye.Dispose();
 
     private EnvironmentDetector Detector() => new(_settings, _rig.Seams);
 

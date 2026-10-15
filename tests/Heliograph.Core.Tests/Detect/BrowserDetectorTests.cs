@@ -1,18 +1,14 @@
 using Heliograph.Core.Detect;
-using Heliograph.Core.Tests.Eye;
 
 namespace Heliograph.Core.Tests.Detect;
 
-[Collection(ProcessStateCollection.Name)]
-public sealed class BrowserDetectorTests : IDisposable
+public sealed class BrowserDetectorTests
 {
     private const string EdgeRegistry = @"C:\Edge\msedge.exe";
     private const string ChromeWin = @"C:\PF\Google\Chrome\Application\chrome.exe";
 
-    private readonly EyeHome _eye = new();
     private readonly Rig _rig = new() { Platform = DetectionPlatform.Windows };
 
-    public void Dispose() => _eye.Dispose();
 
     private IReadOnlyList<BrowserInfo> Find() => new BrowserDetector(_rig.Seams).FindBrowsers();
 
@@ -46,12 +42,12 @@ public sealed class BrowserDetectorTests : IDisposable
     [Fact]
     public void Local_app_data_holds_edge_when_program_files_does_not()
     {
-        _rig.Env.Set("LOCALAPPDATA", @"C:\Users\Deano\AppData\Local");
-        _rig.Files.Existing.Add(@"C:\Users\Deano\AppData\Local\Microsoft\Edge\Application\msedge.exe");
+        _rig.Env.Set("LOCALAPPDATA", @"C:\Users\me\AppData\Local");
+        _rig.Files.Existing.Add(@"C:\Users\me\AppData\Local\Microsoft\Edge\Application\msedge.exe");
 
         var edge = Find().Single();
 
-        Assert.Equal(("msedge", @"C:\Users\Deano\AppData\Local\Microsoft\Edge\Application\msedge.exe", "common-location"), Row(edge));
+        Assert.Equal(("msedge", @"C:\Users\me\AppData\Local\Microsoft\Edge\Application\msedge.exe", "common-location"), Row(edge));
     }
 
     [Fact]

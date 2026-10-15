@@ -1,23 +1,20 @@
 using System.ComponentModel;
 using Heliograph.Core.Detect;
-using Heliograph.Core.Tests.Eye;
 
 namespace Heliograph.Core.Tests.Detect;
 
-[Collection(ProcessStateCollection.Name)]
-public sealed class InstagramAppDetectorTests : IDisposable
+public sealed class InstagramAppDetectorTests
 {
     private const string PackageJson =
         "{\"Name\":\"Facebook.InstagramBeta\",\"Version\":\"42.0.23.0\"," +
         "\"PackageFamilyName\":\"Facebook.InstagramBeta_8xx8rvfyw5nnt\"," +
         "\"InstallLocation\":\"C:\\\\Program Files\\\\WindowsApps\\\\Facebook.InstagramBeta_42\"}";
+    private const string Aumid = "Facebook.InstagramBeta_8xx8rvfyw5nnt!App";
     private const string StoreUri = "ms-windows-store://pdp/?ProductId=9NBLGGH5L9XT";
     private const string PowerShellExe = @"C:\Windows\System32\WindowsPowerShell\v1.0\powershell.exe";
 
-    private readonly EyeHome _eye = new();
     private readonly Rig _rig = new() { Platform = DetectionPlatform.Windows };
 
-    public void Dispose() => _eye.Dispose();
 
     private InstagramAppDetector Detector() => new(_rig.Seams);
 
@@ -188,10 +185,10 @@ public sealed class InstagramAppDetectorTests : IDisposable
         var detector = Detector();
 
         _rig.Window.Titles = () => [];
-        Assert.Equal((false, (string?)null, (string?)null), ToTuple(detector.FindWindow()));
+        Assert.Equal((false, (string?)null, (string?)null), ToTuple(detector.FindWindow(Aumid)));
 
         _rig.Window.Titles = () => ["(1) Instagram"];
-        Assert.Equal((true, "(1) Instagram", (string?)null), ToTuple(detector.FindWindow()));
+        Assert.Equal((true, "(1) Instagram", (string?)null), ToTuple(detector.FindWindow(Aumid)));
     }
 
     [Fact]
@@ -234,6 +231,32 @@ public sealed class InstagramAppDetectorTests : IDisposable
 
         Assert.Contains("web", Detector().Install().ToLowerInvariant());
         Assert.Empty(_rig.Shell.Opened);
+    }
+
+    [Fact]
+    public void Window_probe_is_asked_for_the_detected_aumid_only()
+    {
+        ReturnsStdout(PackageJson);
+        Detector().Detect();
+        Assert.Equal(Aumid, _rig.Window.LastAumid);
+    }
+
+    [Fact]
+    public void Empty_package_array_is_not_installed()
+    {
+        ReturnsStdout("[]");
+        var info = Detector().Detect(checkWindow: false);
+        Assert.False(info.Installed);
+        Assert.Equal("not installed", info.Reason);
+    }
+
+    [Fact]
+    public void Relative_systemroot_is_not_trusted_even_when_unc()
+    {
+        _rig.Env.Set("SYSTEMROOT", @"\\host\share");
+        ReturnsStdout("");
+        Detector().Detect(checkWindow: false);
+        Assert.Equal(PowerShellExe, _rig.Runner.Calls.Single().File);
     }
 
     private static (bool? Open, string? Title, string? Reason) ToTuple(WindowCheck check) =>

@@ -25,6 +25,10 @@ public sealed class WhisperModelDetector(DetectionSeams seams)
     private string? FindInCache(string model, bool windows)
     {
         var root = HubCache(windows);
+        if (!PlatformPath.IsAbsolute(root, windows))
+        {
+            return null;
+        }
         var snapshots = PlatformPath.Join(
             PlatformPath.Join(root, $"models--Systran--faster-whisper-{model}", windows), "snapshots", windows);
 

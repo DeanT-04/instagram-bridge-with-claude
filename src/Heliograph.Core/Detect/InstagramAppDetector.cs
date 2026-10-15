@@ -9,7 +9,6 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
     public const string StoreProductId = "9NBLGGH5L9XT";
     public const string StoreUri = $"ms-windows-store://pdp/?ProductId={StoreProductId}";
 
-    private const string PackageName = "Facebook.InstagramBeta";
     private const string DefaultFamily = "Facebook.InstagramBeta_8xx8rvfyw5nnt";
     private const string Query =
         "Get-AppxPackage -Name Facebook.InstagramBeta | Select-Object Name,Version,PackageFamilyName,InstallLocation | ConvertTo-Json -Compress";
@@ -17,6 +16,7 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
 
     private static readonly TimeSpan QueryTimeout = TimeSpan.FromSeconds(30);
 
+    private readonly object _cacheLock = new();
     private Package? _installed;
     private double? _notInstalledAt;
 
@@ -44,25 +44,34 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
             return new InstagramAppInfo(true, true, package.Version, aumid, null, null, null);
         }
 
-        var window = FindWindow();
-        var reason = window.Reason;
-        return new InstagramAppInfo(true, true, package.Version, aumid, window.Open, window.Title, reason);
+        var window = FindWindow(aumid);
+        return new InstagramAppInfo(true, true, package.Version, aumid, window.Open, window.Title, window.Reason);
     }
 
-    public WindowCheck FindWindow()
+    /// <summary>Forgets the cached Get-AppxPackage answer, for tests or after installing the app.</summary>
+    public void ClearCache()
+    {
+        lock (_cacheLock)
+        {
+            _installed = null;
+            _notInstalledAt = null;
+        }
+    }
+
+    /// <summary>Windows owned by the app's AUMID. The seam returns only those, never a title match.</summary>
+    public WindowCheck FindWindow(string aumid)
     {
         IReadOnlyList<string> titles;
         try
         {
-            titles = seams.Window.FindWindowTitles();
+            titles = seams.Window.FindWindowTitles(aumid);
         }
         catch (Exception error)
         {
             return new WindowCheck(null, null, $"window check unavailable: {error.Message}");
         }
 
-        var match = titles.FirstOrDefault(title => title.Contains("Instagram", StringComparison.OrdinalIgnoreCase));
-        return match is null ? new WindowCheck(false, null, null) : new WindowCheck(true, match, null);
+        return titles.Count == 0 ? new WindowCheck(false, null, null) : new WindowCheck(true, titles[0], null);
     }
 
     public string Install()
@@ -84,28 +93,31 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
 
     private QueryResult Lookup()
     {
-        var now = seams.Clock();
-        if (_installed is not null)
+        lock (_cacheLock)
         {
-            return new QueryResult(_installed, null);
-        }
-        if (_notInstalledAt is { } stamp && now - stamp <= NotInstalledTtlSeconds)
-        {
-            return new QueryResult(null, null);
-        }
+            var now = seams.Clock();
+            if (_installed is not null)
+            {
+                return new QueryResult(_installed, null);
+            }
+            if (_notInstalledAt is { } stamp && now - stamp <= NotInstalledTtlSeconds)
+            {
+                return new QueryResult(null, null);
+            }
 
-        var result = RunQuery();
-        if (result.Error is not null)
-        {
+            var result = RunQuery();
+            if (result.Error is not null)
+            {
+                return result;
+            }
+            if (result.Package is null)
+            {
+                _notInstalledAt = now;
+                return result;
+            }
+            _installed = result.Package;
             return result;
         }
-        if (result.Package is null)
-        {
-            _notInstalledAt = now;
-            return result;
-        }
-        _installed = result.Package;
-        return result;
     }
 
     private QueryResult RunQuery()
@@ -133,19 +145,24 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
         {
             return new QueryResult(null, "Get-AppxPackage timed out");
         }
-        catch (Exception error)
+        catch (Exception error) when (error is JsonException or IOException or InvalidOperationException)
         {
             return new QueryResult(null, $"Get-AppxPackage failed: {Trim(error.Message)}");
         }
     }
 
-    private static Package ParsePackage(string json)
+    /// <summary>The first registered package, or null when the answer holds no object.</summary>
+    private static Package? ParsePackage(string json)
     {
         using var document = JsonDocument.Parse(json);
         var root = document.RootElement;
         if (root.ValueKind == JsonValueKind.Array)
         {
-            root = root.EnumerateArray().First();
+            root = root.EnumerateArray().FirstOrDefault();
+        }
+        if (root.ValueKind != JsonValueKind.Object)
+        {
+            return null;
         }
         return new Package(Text(root, "Version"), Text(root, "PackageFamilyName"));
     }
@@ -156,11 +173,12 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
     private string PowerShellPath()
     {
         var root = seams.Env.Get("SYSTEMROOT");
-        if (string.IsNullOrEmpty(root) || !PlatformPath.IsAbsolute(root, windows: true))
+        var driveRooted = root is { Length: >= 3 } && char.IsAsciiLetter(root[0]) && root[1] == ':';
+        if (!driveRooted || !PlatformPath.IsAbsolute(root!, windows: true))
         {
             root = @"C:\Windows";
         }
-        return PlatformPath.Join(root, @"System32\WindowsPowerShell\v1.0\powershell.exe", windows: true);
+        return PlatformPath.Join(root!, @"System32\WindowsPowerShell\v1.0\powershell.exe", windows: true);
     }
 
     private static string Trim(string text)

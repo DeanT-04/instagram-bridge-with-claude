@@ -37,13 +37,14 @@ public sealed partial class ToolDetector(DetectionSeams seams)
 
         foreach (var entry in entries)
         {
-            if (!PlatformPath.IsAbsolute(entry, windows))
+            var directory = entry.Trim().Trim('"');
+            if (!PlatformPath.IsAbsolute(directory, windows))
             {
                 continue;
             }
             foreach (var candidate in names)
             {
-                var path = PlatformPath.Join(entry, candidate, windows);
+                var path = PlatformPath.Join(directory, candidate, windows);
                 if (seams.Files.FileExists(path))
                 {
                     return path;
@@ -55,11 +56,13 @@ public sealed partial class ToolDetector(DetectionSeams seams)
 
     private IEnumerable<string> WindowsNames(string name)
     {
-        var extensions = (seams.Env.Get("PATHEXT") ?? ".EXE;.COM;.BAT;.CMD")
-            .Split(';', StringSplitOptions.RemoveEmptyEntries);
+        var extensions = (seams.Env.Get("PATHEXT") ?? ".EXE;.COM")
+            .Split(';', StringSplitOptions.RemoveEmptyEntries)
+            .Select(extension => extension.ToLowerInvariant())
+            .Where(extension => extension is ".exe" or ".com");
         foreach (var extension in extensions)
         {
-            yield return name + extension.ToLowerInvariant();
+            yield return name + extension;
         }
     }
 

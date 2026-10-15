@@ -42,7 +42,7 @@ public interface IShellLauncher
 
 public interface IAppWindowProbe
 {
-    IReadOnlyList<string> FindWindowTitles();
+    IReadOnlyList<string> FindWindowTitles(string aumid);
 }
 
 public sealed record DetectionSeams(

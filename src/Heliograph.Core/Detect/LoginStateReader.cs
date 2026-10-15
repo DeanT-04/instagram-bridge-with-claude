@@ -14,18 +14,25 @@ public static class LoginStateReader
         try
         {
             using var document = JsonDocument.Parse(json);
-            if (document.RootElement.TryGetProperty("cdp", out var cdp)
-                && cdp.TryGetProperty("default", out var profile)
-                && profile.TryGetProperty("logged_in", out var value)
-                && (value.ValueKind == JsonValueKind.True || value.ValueKind == JsonValueKind.False))
+            if (!TryObject(document.RootElement, "cdp", out var cdp)
+                || !TryObject(cdp, "default", out var profile)
+                || !profile.TryGetProperty("logged_in", out var value))
             {
-                return value.GetBoolean();
+                return null;
             }
-            return null;
+            return value.ValueKind is JsonValueKind.True or JsonValueKind.False ? value.GetBoolean() : null;
         }
         catch (JsonException)
         {
             return null;
         }
+    }
+
+    private static bool TryObject(JsonElement parent, string name, out JsonElement child)
+    {
+        child = default;
+        return parent.ValueKind == JsonValueKind.Object
+            && parent.TryGetProperty(name, out child)
+            && child.ValueKind == JsonValueKind.Object;
     }
 }

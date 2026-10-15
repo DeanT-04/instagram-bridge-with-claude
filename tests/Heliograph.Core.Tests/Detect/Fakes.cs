@@ -87,9 +87,12 @@ internal sealed class FakeWindows : IAppWindowProbe
 
     public int Calls { get; private set; }
 
-    public IReadOnlyList<string> FindWindowTitles()
+    public string? LastAumid { get; private set; }
+
+    public IReadOnlyList<string> FindWindowTitles(string aumid)
     {
         Calls++;
+        LastAumid = aumid;
         return Titles();
     }
 }
