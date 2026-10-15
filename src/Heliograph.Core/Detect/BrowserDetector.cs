@@ -62,7 +62,7 @@ public sealed class BrowserDetector(DetectionSeams seams)
         }
         catch (Exception error)
         {
-            Spans.Current?.Set($"{channel}_error", error.Message);
+            Spans.Current?.Set($"{channel}_error", error.Message).Fail(error);
             return null;
         }
         return null;
@@ -88,7 +88,7 @@ public sealed class BrowserDetector(DetectionSeams seams)
         }
         var trimmed = registered?.Trim().Trim('"');
         if (!string.IsNullOrEmpty(trimmed) && PlatformPath.IsAbsolute(trimmed, windows: true)
-            && trimmed.EndsWith(exe, StringComparison.OrdinalIgnoreCase))
+            && string.Equals(trimmed[(trimmed.LastIndexOf('\\') + 1)..], exe, StringComparison.OrdinalIgnoreCase))
         {
             yield return (trimmed, "registry");
         }

@@ -1,19 +1,12 @@
-using Heliograph.Core.Detect;
 using System.Diagnostics;
+using Heliograph.Core.Detect;
 
 namespace Heliograph.Core.Detect.Production;
 
 /// <summary>Opens a target with the OS shell. Only the Instagram Store product page is allowed.</summary>
 public sealed class ShellLauncher : IShellLauncher
 {
-    private const string StorePrefix = "ms-windows-store://pdp/?ProductId=";
-    private const int MaxLength = 200;
-
-    public static bool IsAllowed(string target) =>
-        target.Length <= MaxLength
-        && target.StartsWith(StorePrefix, StringComparison.Ordinal)
-        && target.AsSpan(StorePrefix.Length).ToString().All(char.IsAsciiLetterOrDigit)
-        && target.Length > StorePrefix.Length;
+    public static bool IsAllowed(string target) => string.Equals(target, InstagramAppDetector.StoreUri, StringComparison.Ordinal);
 
     public void Open(string target)
     {

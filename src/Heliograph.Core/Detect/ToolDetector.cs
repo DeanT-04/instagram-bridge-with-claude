@@ -28,6 +28,7 @@ public sealed partial class ToolDetector(DetectionSeams seams)
         }
         catch (Exception error)
         {
+            Spans.Current?.Set("version_error", error.Message).Fail(error);
             return new ToolInfo(true, path, null, $"version check failed: {error.Message}");
         }
     }

@@ -75,7 +75,7 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
         }
         catch (Exception error)
         {
-            Spans.Current?.Set("window_error", error.Message);
+            Spans.Current?.Set("window_error", error.Message).Fail(error);
             return new WindowCheck(null, null, $"window check unavailable: {error.Message}");
         }
 
@@ -116,7 +116,7 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
             var result = RunQuery();
             if (result.Error is not null)
             {
-                Spans.Current?.Set("query_error", result.Error);
+                Spans.Current?.Set("query_error", result.Error).Fail(new InvalidOperationException(result.Error));
                 return result;
             }
             if (result.Package is null)
@@ -154,7 +154,7 @@ public sealed class InstagramAppDetector(DetectionSeams seams)
         {
             return new QueryResult(null, "Get-AppxPackage timed out");
         }
-        catch (Exception error) when (error is JsonException or IOException or InvalidOperationException)
+        catch (Exception error)
         {
             return new QueryResult(null, $"Get-AppxPackage failed: {Trim(error.Message)}");
         }

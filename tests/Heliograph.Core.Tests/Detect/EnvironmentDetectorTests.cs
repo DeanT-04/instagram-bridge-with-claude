@@ -116,6 +116,35 @@ public sealed class EnvironmentDetectorTests : IDisposable
         Assert.Single(_rig.Runner.Calls, c => c.File.EndsWith("powershell.exe", StringComparison.OrdinalIgnoreCase));
     }
 
+    [Fact]
+    public async Task Probes_nest_under_one_environment_span()
+    {
+        ServeProcesses();
+        await Detector().DetectAsync(checkWindow: false);
+        var root = Assert.Single(_eye.Recorded(name: "detect.environment"));
+        var traceId = (string?)root["trace_id"];
+        var rootId = (string?)root["span_id"];
+        foreach (var child in new[] { "detect.browsers", "detect.tool", "detect.whisper_model", "detect.instagram_app" })
+        {
+            var spans = _eye.Recorded(name: child);
+            Assert.NotEmpty(spans);
+            foreach (var span in spans)
+            {
+                Assert.Equal(rootId, (string?)span["parent_id"]);
+                Assert.Equal(traceId, (string?)span["trace_id"]);
+            }
+        }
+    }
+
+    [Fact]
+    public async Task Failing_app_query_marks_its_span_as_error()
+    {
+        _rig.Runner.Handler = (_, _) => throw new InvalidOperationException("boom");
+        await Detector().DetectAsync(checkWindow: false);
+        var app = Assert.Single(_eye.Recorded(name: "detect.instagram_app"));
+        Assert.Equal("error", (string?)app["status"]);
+    }
+
     [Theory]
     [InlineData(null, null)]
     [InlineData("not json", null)]
