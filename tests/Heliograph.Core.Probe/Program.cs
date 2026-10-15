@@ -13,6 +13,7 @@ try
         ["try", var op] => Try(op),
         ["check"] => Check(),
         ["errors"] => DumpErrors(),
+        ["eye", .. var rest] => EyeCommands.Run(rest),
         _ => Usage(),
     };
 }
@@ -118,7 +119,8 @@ static TimeSpan Seconds(string value) => TimeSpan.FromSeconds(double.Parse(value
 
 static int Usage()
 {
-    Console.Error.WriteLine("usage: Heliograph.Core.Probe settings [env-file] | check | try <op> | errors");
-    Console.Error.WriteLine("       Heliograph.Core.Probe acquire <state-file> <min-interval-s> <jitter-s>");
+    Console.Error.WriteLine("usage: Heliograph.Core.Probe settings [env-file] | check | try <op> | errors | acquire <state-file> <min-interval-s> <jitter-s>");
+    Console.Error.WriteLine("       Heliograph.Core.Probe eye tree | error | parallel <n> | spans <n> <interval-ms> | bench <n>");
+    Console.Error.WriteLine("       Heliograph.Core.Probe eye report <hours> | tail | crash | redact | payload | prune <folder> <days>");
     return 2;
 }
