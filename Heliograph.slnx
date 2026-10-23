@@ -1,0 +1,9 @@
+<Solution>
+  <Folder Name="/src/">
+    <Project Path="src/Heliograph.Core/Heliograph.Core.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Heliograph.Core.Probe/Heliograph.Core.Probe.csproj" />
+    <Project Path="tests/Heliograph.Core.Tests/Heliograph.Core.Tests.csproj" />
+  </Folder>
+</Solution>
